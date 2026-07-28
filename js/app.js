@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Powered by Ezgif Delta Transparency Compressor & Web Worker Engine (240x240 HD, 256 Colors).
+ * Powered by Ezgif Global Palette Engine & Web Worker (240x240 HD, 256 Colors, Ultra Fast).
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -109,7 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
       trimStartInput.max = dur;
       trimEndInput.max = dur;
       trimStartInput.value = '0.0';
-      trimEndInput.value = Math.min(3.0, dur).toFixed(1);
+      // DEFAULT TO FULL VIDEO DURATION (Not limited to 3s)
+      trimEndInput.value = dur.toFixed(1);
 
       videoCropper.resetTransform();
       videoCropper.startRenderLoop();
@@ -189,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = Math.max(0.1, end - start);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
-    const calc = TFTCalculator.calculate(duration, 20, targetKb);
+    const calc = TFTCalculator.calculate(duration, 18, targetKb);
     currentVideoCalc = calc;
 
     calcRes.textContent = `240 x 240 px (FIX HD)`;
@@ -202,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.textContent = '256 Warna Ezgif HD';
   }
 
-  // --- EZGIF DELTA TRANSPARENCY OPTIMIZER ENGINE ---
+  // --- EZGIF GLOBAL PALETTE FAST HD GENERATOR ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -218,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const exportRes = 240;
     let currentFps = currentVideoCalc ? currentVideoCalc.fps : 15;
-    let currentDeltaThreshold = 24; // Ezgif initial delta transparency threshold
+    let currentDeltaThreshold = 24;
 
     let finalGifBuffer = null;
     let attempts = 0;
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBarFill.style.width = `${extractPct}%`;
       }
 
-      progressStatusText.textContent = `[Ezgif Optimizer] Kompresi Delta Transparansi (256 Warna HD)...`;
+      progressStatusText.textContent = `[Ezgif Engine] Kompresi Global Palette & Delta (256 Warna HD)...`;
 
       try {
         finalGifBuffer = await AsyncGIFEncoder.encodeInWorker(
@@ -284,14 +285,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const generatedKb = Math.round(finalGifBuffer.length / 1024);
 
-      if (generatedKb <= targetKb || currentFps <= 4) {
+      if (generatedKb <= targetKb || currentFps <= 3) {
         isWithinTarget = true;
       } else {
         progressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
 
-        currentDeltaThreshold += 12; // Increase delta transparency threshold
-        currentFps = Math.max(4, Math.round(currentFps * 0.8));
+        currentDeltaThreshold += 12;
+        currentFps = Math.max(3, Math.round(currentFps * 0.75));
       }
     }
 
@@ -310,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Delta Optimized HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ Ezgif-Style Global Palette HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
@@ -320,9 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
     resultCard.scrollIntoView({ behavior: 'smooth' });
   });
 
+  // Safety seeking helper with 300ms fallback timeout to prevent video seek hangs
   function seekVideoTo(video, time) {
     return new Promise((resolve) => {
-      if (Math.abs(video.currentTime - time) < 0.01) {
+      if (Math.abs(video.currentTime - time) < 0.02) {
         resolve();
         return;
       }
@@ -333,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
           video.removeEventListener('seeked', onSeeked);
           resolve();
         }
-      }, 400);
+      }, 300);
 
       const onSeeked = () => {
         if (!resolved) {
@@ -513,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const durationSec = Math.max(0.2, totalDurMs / 1000);
     const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
-    const calc = TFTCalculator.calculate(durationSec, 20, targetKb);
+    const calc = TFTCalculator.calculate(durationSec, 18, targetKb);
     gifCurrentCalc = calc;
 
     gifCalcRes.textContent = `240 x 240 px (FIX HD)`;
@@ -580,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gifProgressBarFill.style.width = `${extractPct}%`;
       }
 
-      gifProgressStatusText.textContent = `[Ezgif Optimizer] Kompresi Delta Transparansi 256 Warna HD...`;
+      gifProgressStatusText.textContent = `[Ezgif Engine] Kompresi Global Palette 256 Warna HD...`;
 
       try {
         finalBuffer = await AsyncGIFEncoder.encodeInWorker(
@@ -605,14 +607,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const generatedKb = Math.round(finalBuffer.length / 1024);
 
-      if (generatedKb <= targetKb || targetFps <= 4) {
+      if (generatedKb <= targetKb || targetFps <= 3) {
         isWithinTarget = true;
       } else {
         gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
 
         currentDeltaThreshold += 12;
-        targetFps = Math.max(4, Math.round(targetFps * 0.8));
+        targetFps = Math.max(3, Math.round(targetFps * 0.75));
       }
     }
 
@@ -631,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Delta Optimized HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ Ezgif-Style Global Palette HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');
