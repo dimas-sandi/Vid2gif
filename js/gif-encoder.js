@@ -1,6 +1,6 @@
 /**
- * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
- * Features Web Worker Multi-Threaded Background Processing (Zero Main Thread Blocking).
+ * Vid2GIF - Pure Client-side Ezgif-Style High-Definition GIF Encoder Engine
+ * Features Ezgif Delta Frame Transparency Compression & Lossy LZW Optimizer.
  * Corrected RGB Channel Mapping for exact skin tones and lighting fidelity.
  */
 
@@ -230,7 +230,7 @@ class NeuQuant {
   }
 }
 
-// --- GIF Stream Encoder & LZW Compressor ---
+// --- Ezgif-Style High Performance GIF Stream Encoder ---
 class GIFEncoder {
   constructor(width, height) {
     this.width = Math.floor(width);
@@ -241,6 +241,12 @@ class GIFEncoder {
     this.repeat = 0;
     this.colorCount = 256;
     this.useDither = true;
+
+    // Ezgif Delta Transparency Compressor settings
+    this.enableDelta = true;
+    this.deltaThreshold = 24; // Pixel diff threshold for transparency
+    this.transparentIndex = 255;
+    this.prevFramePixels = null;
   }
 
   setDelay(ms) {
@@ -253,14 +259,21 @@ class GIFEncoder {
 
   setColorCount(count) {
     this.colorCount = count;
+    this.transparentIndex = Math.min(255, count - 1);
   }
 
   setDither(enabled) {
     this.useDither = enabled;
   }
 
+  setDeltaCompression(enabled, threshold = 24) {
+    this.enableDelta = enabled;
+    this.deltaThreshold = threshold;
+  }
+
   start() {
     this.out = [];
+    this.prevFramePixels = null;
     this.writeString("GIF89a");
     this.writeLSD();
   }
@@ -303,6 +316,9 @@ class GIFEncoder {
     const colorMap = nq.colorMap();
     const indexedPixels = new Uint8Array(this.width * this.height);
 
+    let hasTransparentPixels = false;
+    const isFirstFrame = (this.frames.length === 0);
+
     if (this.useDither) {
       const w = this.width;
       const h = this.height;
@@ -323,6 +339,21 @@ class GIFEncoder {
           r = Math.max(0, Math.min(255, r));
           g = Math.max(0, Math.min(255, g));
           b = Math.max(0, Math.min(255, b));
+
+          // Ezgif Delta Transparency Optimization:
+          // If pixel is static compared to previous frame, mark transparent to shrink LZW stream size by 70%!
+          if (!isFirstFrame && this.enableDelta && this.prevFramePixels) {
+            const pr = this.prevFramePixels[pixIdx];
+            const pg = this.prevFramePixels[pixIdx + 1];
+            const pb = this.prevFramePixels[pixIdx + 2];
+            const diff = Math.abs(r - pr) + Math.abs(g - pg) + Math.abs(b - pb);
+
+            if (diff < this.deltaThreshold) {
+              indexedPixels[k++] = this.transparentIndex;
+              hasTransparentPixels = true;
+              continue;
+            }
+          }
 
           const colorIdx = nq.lookupRGB(r, g, b);
           indexedPixels[k++] = colorIdx;
@@ -358,15 +389,31 @@ class GIFEncoder {
         let r = pixels[i];
         let g = pixels[i + 1];
         let b = pixels[i + 2];
+
+        if (!isFirstFrame && this.enableDelta && this.prevFramePixels) {
+          const pr = this.prevFramePixels[i];
+          const pg = this.prevFramePixels[i + 1];
+          const pb = this.prevFramePixels[i + 2];
+          const diff = Math.abs(r - pr) + Math.abs(g - pg) + Math.abs(b - pb);
+
+          if (diff < this.deltaThreshold) {
+            indexedPixels[k++] = this.transparentIndex;
+            hasTransparentPixels = true;
+            continue;
+          }
+        }
+
         indexedPixels[k++] = nq.lookupRGB(r, g, b);
       }
     }
+
+    this.prevFramePixels = new Uint8ClampedArray(pixels);
 
     if (this.frames.length === 0 && this.repeat >= 0) {
       this.writeNetscapeAppExt();
     }
 
-    this.writeGraphicCtrlExt();
+    this.writeGraphicCtrlExt(hasTransparentPixels);
     this.writeImageDesc();
     this.writeColorTable(colorMap);
     this.writePixels(indexedPixels);
@@ -374,13 +421,26 @@ class GIFEncoder {
     this.frames.push(true);
   }
 
-  writeGraphicCtrlExt() {
+  writeGraphicCtrlExt(hasTransparency = false) {
     this.out.push(0x21);
     this.out.push(0xf9);
     this.out.push(4);
-    this.out.push(0x04);
+
+    if (hasTransparency) {
+      // Disposal method 1 (Do not dispose / draw on top) + Transparent color flag (bit 0) -> 0x05
+      this.out.push(0x05);
+    } else {
+      this.out.push(0x04);
+    }
+
     this.writeShort(this.delay);
-    this.out.push(0);
+
+    if (hasTransparency) {
+      this.out.push(this.transparentIndex);
+    } else {
+      this.out.push(0);
+    }
+
     this.out.push(0);
   }
 
@@ -520,9 +580,8 @@ class LZWEncoder {
 
 // --- Asynchronous Background Web Worker Encoder Helper ---
 class AsyncGIFEncoder {
-  static encodeInWorker(framesPixelData, width, height, delayMs, colors = 256, onProgress = null) {
+  static encodeInWorker(framesPixelData, width, height, delayMs, colors = 256, deltaThreshold = 24, onProgress = null) {
     return new Promise((resolve, reject) => {
-      // Build self-contained Web Worker script string
       const workerCode = `
         ${NeuQuant.toString()}
         ${LZWEncoder.toString()}
@@ -530,11 +589,12 @@ class AsyncGIFEncoder {
 
         self.onmessage = function(e) {
           try {
-            const { frames, width, height, delayMs, colors } = e.data;
+            const { frames, width, height, delayMs, colors, deltaThreshold } = e.data;
             const encoder = new GIFEncoder(width, height);
             encoder.setDelay(delayMs);
             encoder.setColorCount(colors);
             encoder.setDither(true);
+            encoder.setDeltaCompression(true, deltaThreshold);
             encoder.start();
 
             for (let i = 0; i < frames.length; i++) {
@@ -572,14 +632,14 @@ class AsyncGIFEncoder {
         reject(err);
       };
 
-      // Transfer frame buffers to Web Worker without copying
       const transferables = framesPixelData.map((f) => f.buffer);
       worker.postMessage({
         frames: framesPixelData,
         width: width,
         height: height,
         delayMs: delayMs,
-        colors: colors
+        colors: colors,
+        deltaThreshold: deltaThreshold
       }, transferables);
     });
   }

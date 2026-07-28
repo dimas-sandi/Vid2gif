@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Powered by AsyncGIFEncoder Web Worker (100% Background Multi-Threaded, Zero Main Thread Freezing).
+ * Powered by Ezgif Delta Transparency Compressor & Web Worker Engine (240x240 HD, 256 Colors).
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.textContent = '256 Warna Ezgif HD';
   }
 
-  // --- MULTI-THREADED WEB WORKER HD GENERATOR (ZERO MAIN THREAD FREEZE) ---
+  // --- EZGIF DELTA TRANSPARENCY OPTIMIZER ENGINE ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const exportRes = 240;
     let currentFps = currentVideoCalc ? currentVideoCalc.fps : 15;
+    let currentDeltaThreshold = 24; // Ezgif initial delta transparency threshold
 
     let finalGifBuffer = null;
     let attempts = 0;
@@ -239,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const framesPixelData = [];
 
-      progressStatusText.textContent = `Mengambil frame video (${totalFrames} frame @ ${currentFps} FPS)...`;
+      progressStatusText.textContent = `Mengekstrak frame video (${totalFrames} frame @ ${currentFps} FPS)...`;
       progressBarFill.style.width = '0%';
       progressPercent.textContent = '0%';
 
@@ -251,17 +252,15 @@ document.addEventListener('DOMContentLoaded', () => {
         videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        // Create Uint8ClampedArray clone to safely transfer to Web Worker
         framesPixelData.push(new Uint8ClampedArray(imgData.data));
 
-        const extractPct = Math.round(((i + 1) / totalFrames) * 40);
+        const extractPct = Math.round(((i + 1) / totalFrames) * 35);
         progressPercent.textContent = `${extractPct}%`;
         progressBarFill.style.width = `${extractPct}%`;
       }
 
-      progressStatusText.textContent = `[Background Worker] Mengompresi GIF 256 Warna HD @ ${currentFps} FPS...`;
+      progressStatusText.textContent = `[Ezgif Optimizer] Kompresi Delta Transparansi (256 Warna HD)...`;
 
-      // Delegate all LZW, NeuQuant, and Floyd-Steinberg encoding to Web Worker thread
       try {
         finalGifBuffer = await AsyncGIFEncoder.encodeInWorker(
           framesPixelData,
@@ -269,8 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
           exportRes,
           1000 / currentFps,
           256,
+          currentDeltaThreshold,
           (pct) => {
-            const totalPct = 40 + Math.round((pct / 100) * 60);
+            const totalPct = 35 + Math.round((pct / 100) * 65);
             progressPercent.textContent = `${totalPct}%`;
             progressBarFill.style.width = `${totalPct}%`;
           }
@@ -287,10 +287,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb || currentFps <= 4) {
         isWithinTarget = true;
       } else {
-        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk 256 Warna HD...`;
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
         await new Promise((r) => setTimeout(r, 400));
 
-        currentFps = Math.max(4, Math.round(currentFps * 0.75));
+        currentDeltaThreshold += 12; // Increase delta transparency threshold
+        currentFps = Math.max(4, Math.round(currentFps * 0.8));
       }
     }
 
@@ -304,12 +305,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalGifBuffer.length / 1024);
     resultSizeBadge.textContent = `${finalSizeKb} KB`;
     resFinalSize.textContent = `${finalSizeKb} KB (${finalGifBuffer.length.toLocaleString()} bytes)`;
-    resFinalResolution.textContent = `240 x 240 px (FIX HD) @ ${currentFps} FPS (256 Warna)`;
+    resFinalResolution.textContent = `240 x 240 px (FIX Ezgif HD) @ ${currentFps} FPS (256 Warna)`;
 
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Photorealistic HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ Ezgif-Style Delta Optimized HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
@@ -319,7 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resultCard.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Safety seeking helper with 400ms fallback timeout to prevent video seek hangs
   function seekVideoTo(video, time) {
     return new Promise((resolve) => {
       if (Math.abs(video.currentTime - time) < 0.01) {
@@ -535,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const exportRes = 240;
     let targetFps = gifCurrentCalc ? gifCurrentCalc.fps : 15;
+    let currentDeltaThreshold = 24;
     const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
     let finalBuffer = null;
@@ -574,12 +575,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
         framesPixelData.push(new Uint8ClampedArray(imgData.data));
 
-        const extractPct = Math.round(((i + 1) / targetFrameCount) * 40);
+        const extractPct = Math.round(((i + 1) / targetFrameCount) * 35);
         gifProgressPercent.textContent = `${extractPct}%`;
         gifProgressBarFill.style.width = `${extractPct}%`;
       }
 
-      gifProgressStatusText.textContent = `[Background Worker] Mengompresi GIF 256 Warna HD...`;
+      gifProgressStatusText.textContent = `[Ezgif Optimizer] Kompresi Delta Transparansi 256 Warna HD...`;
 
       try {
         finalBuffer = await AsyncGIFEncoder.encodeInWorker(
@@ -588,8 +589,9 @@ document.addEventListener('DOMContentLoaded', () => {
           exportRes,
           1000 / targetFps,
           256,
+          currentDeltaThreshold,
           (pct) => {
-            const totalPct = 40 + Math.round((pct / 100) * 60);
+            const totalPct = 35 + Math.round((pct / 100) * 65);
             gifProgressPercent.textContent = `${totalPct}%`;
             gifProgressBarFill.style.width = `${totalPct}%`;
           }
@@ -606,10 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb || targetFps <= 4) {
         isWithinTarget = true;
       } else {
-        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk 256 Warna HD...`;
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
         await new Promise((r) => setTimeout(r, 400));
 
-        targetFps = Math.max(4, Math.round(targetFps * 0.75));
+        currentDeltaThreshold += 12;
+        targetFps = Math.max(4, Math.round(targetFps * 0.8));
       }
     }
 
@@ -628,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Photorealistic HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ Ezgif-Style Delta Optimized HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');
