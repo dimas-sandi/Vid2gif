@@ -865,6 +865,8 @@ body {
   border-radius: 50%;
   object-fit: cover;
   display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .tft-glare {

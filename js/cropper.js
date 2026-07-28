@@ -280,8 +280,9 @@ class VideoCropper {
   }
 
   /**
-   * Direct sharp export: Render video frame straight to 240x240 target canvas.
-   * No intermediate canvas, no smoothing, no motion blend — pixel-sharp output.
+   * High-Precision 2-Stage Step-Down Resampler:
+   * Stage 1: Render video to 480x480 intermediate canvas (captures full detail from 1080p/4K)
+   * Stage 2: Downsample 480x480 to 240x240 target canvas with high-precision smoothing (razor-sharp output)
    */
   exportFrameToCanvas(targetCanvas) {
     const tw = targetCanvas.width;
@@ -293,31 +294,40 @@ class VideoCropper {
     const vh = this.video.videoHeight || this.video.height;
     if (!vw || !vh) return;
 
-    // Smooth anti-aliased downscaling without motion blur
-    tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = 'high';
-    tctx.clearRect(0, 0, tw, th);
-    tctx.fillStyle = '#000000';
-    tctx.fillRect(0, 0, tw, th);
+    // STAGE 1: Render to 480x480 intermediate canvas
+    const iw = 480;
+    const ih = 480;
+    const ictx = this.intCtx;
+    ictx.imageSmoothingEnabled = true;
+    ictx.imageSmoothingQuality = 'high';
+    ictx.clearRect(0, 0, iw, ih);
+    ictx.fillStyle = '#000000';
+    ictx.fillRect(0, 0, iw, ih);
 
     const aspect = vw / vh;
     let baseW, baseH;
     if (aspect >= 1) {
-      baseH = th;
+      baseH = ih;
       baseW = baseH * aspect;
     } else {
-      baseW = tw;
+      baseW = iw;
       baseH = baseW / aspect;
     }
 
     const scaledW = baseW * this.zoom;
     const scaledH = baseH * this.zoom;
 
-    const drawX = (tw - scaledW) / 2 + this.panX * (tw / this.canvas.width);
-    const drawY = (th - scaledH) / 2 + this.panY * (th / this.canvas.height);
+    const scaleRatio = iw / this.canvas.width;
+    const drawX = (iw - scaledW) / 2 + (this.panX * scaleRatio);
+    const drawY = (ih - scaledH) / 2 + (this.panY * scaleRatio);
 
-    tctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
-    // NO motion blend — every frame is crisp and independent
+    ictx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
+
+    // STAGE 2: Downsample 480x480 -> 240x240 target canvas
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'high';
+    tctx.clearRect(0, 0, tw, th);
+    tctx.drawImage(this.intCanvas, 0, 0, iw, ih, 0, 0, tw, th);
   }
 }
 
