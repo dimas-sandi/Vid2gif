@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Features FIXED 240x240 Export, Dynamic FPS Auto-Tuning, and Smooth Motion Blending Engine.
+ * Fully Automated Engine with FIXED 240x240 Export, Dynamic Auto FPS, and Smooth Motion Blending.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- SMART GENERATOR (FIX 240x240 RESOLUTION WITH MOTION BLENDING) ---
+  // --- FULL AUTO GENERATOR (FIX 240x240 RESOLUTION WITH MOTION BLENDING) ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 

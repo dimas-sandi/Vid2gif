@@ -28,7 +28,7 @@
         </div>
         <div>
           <h1>Vid2GIF <span class="tft-tag">240x240 FIX</span></h1>
-          <p class="subtitle">Konverter Video ke GIF Statis TFT 1.28" dengan Motion Blending (FPS Adaptif)</p>
+          <p class="subtitle">Konverter & Resizer GIF Statis untuk Display Smartwatch 1.28" (FPS Otomatis & Smooth)</p>
         </div>
       </div>
       <div class="header-actions">
@@ -153,7 +153,7 @@
             
             <div class="card settings-card">
               <div class="card-header">
-                <h3><i class="fa-solid fa-sliders"></i> 2. Target KB & Dynamic FPS Engine</h3>
+                <h3><i class="fa-solid fa-sliders"></i> 2. Target KB & Auto FPS Engine</h3>
               </div>
               
               <div class="card-body">
@@ -161,7 +161,7 @@
                 <div class="form-group">
                   <div class="label-with-tooltip">
                     <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
-                    <span class="tooltip-info" title="Batas maksimal ukuran file GIF (FPS akan disesuaikan otomatis agar muat)">?</span>
+                    <span class="tooltip-info" title="Batas maksimal ukuran file GIF (FPS terkalkulasi otomatis agar muat)">?</span>
                   </div>
                   
                   <div class="input-with-unit">
@@ -179,21 +179,21 @@
 
                 <div class="form-group">
                   <div class="label-with-tooltip">
-                    <label for="target-fps"><i class="fa-solid fa-gauge-high"></i> Desired FPS (Otomatis disesuaikan jika perlu):</label>
+                    <label for="target-fps"><i class="fa-solid fa-gauge-high"></i> Max FPS Limit:</label>
                     <span id="fps-display" class="mono-badge">15 FPS</span>
                   </div>
                   <input type="range" id="target-fps" min="5" max="24" step="1" value="15">
                   <div class="range-labels">
-                    <span>5 FPS (Motion Blended)</span>
+                    <span>5 FPS (Super Smooth Blend)</span>
                     <span>15 FPS</span>
-                    <span>24 FPS (Maksimal)</span>
+                    <span>24 FPS (Max)</span>
                   </div>
                 </div>
 
                 <!-- Auto-Calculator Summary Card -->
                 <div id="calc-summary" class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240</h4>
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Otomatis Sistem</h4>
                     <span id="calc-status-tag" class="status-badge status-success">240x240 FIX</span>
                   </div>
 
@@ -203,7 +203,7 @@
                       <span id="calc-res" class="calc-value mono-highlight">240 x 240 px (FIX)</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Calculated FPS</span>
+                      <span class="calc-label">Auto FPS</span>
                       <span id="calc-total-frames" class="calc-value mono-highlight">15 FPS (45 Frames)</span>
                     </div>
                     <div class="calc-item">
@@ -216,12 +216,11 @@
                     </div>
                   </div>
 
-                  <p id="calc-message" class="calc-message">Resolusi FIX 240x240 px. FPS disesuaikan otomatis agar tidak melebihi target.</p>
+                  <p id="calc-message" class="calc-message">Resolusi FIX 240x240 px. FPS terkalkulasi otomatis agar tidak melebihi target.</p>
                 </div>
 
-                <!-- Motion Blur Smoothness Feature Badge -->
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-sparkles"></i> <strong>Smooth Motion Blending Aktif</strong>: FPS rendah tetap terlihat halus & tidak patah-patah!
+                  <i class="fa-solid fa-sparkles"></i> <strong>Smooth Motion Blending Aktif</strong>: FPS rendah tetap terlihat mulus & tidak patah!
                 </div>
 
                 <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
@@ -417,12 +416,12 @@
 
                 <div class="form-group">
                   <div class="label-with-tooltip">
-                    <label for="gif-target-fps"><i class="fa-solid fa-gauge-high"></i> Desired FPS (Diselaraskan otomatis):</label>
+                    <label for="gif-target-fps"><i class="fa-solid fa-gauge-high"></i> Max FPS Limit:</label>
                     <span id="gif-fps-display" class="mono-badge">15 FPS</span>
                   </div>
                   <input type="range" id="gif-target-fps" min="5" max="24" step="1" value="15">
                   <div class="range-labels">
-                    <span>5 FPS (Motion Blended)</span>
+                    <span>5 FPS (Smooth Blend)</span>
                     <span>15 FPS</span>
                     <span>24 FPS</span>
                   </div>
@@ -441,7 +440,7 @@
                       <span id="gif-calc-res" class="calc-value mono-highlight">240 x 240 px (FIX)</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Calculated FPS</span>
+                      <span class="calc-label">Auto FPS</span>
                       <span id="gif-calc-frames" class="calc-value mono-highlight">15 FPS</span>
                     </div>
                     <div class="calc-item">
@@ -454,7 +453,7 @@
                     </div>
                   </div>
 
-                  <p id="gif-calc-message" class="calc-message">Export FIX 240x240 px. FPS disesuaikan otomatis.</p>
+                  <p id="gif-calc-message" class="calc-message">Export FIX 240x240 px. FPS terkalkulasi otomatis.</p>
                 </div>
 
                 <div class="smooth-motion-badge">
