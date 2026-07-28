@@ -23,24 +23,7 @@ Aplikasi web statis modern (100% Client-Side) untuk mengonversi file video dan m
 - **Simulator Hardware GC9A01 1.28"**: Preview animasi GIF secara langsung di dalam bezel jam tangan TFT bulat dengan efek *glass glare*.
 - **C-Array Exporter (ESP32/Arduino)**: Fitur salin buffer `const uint8_t PROGMEM tft_gif_data[]` untuk pemrogram mikrokontroler.
 
----
 
-## 🚀 Cara Upload ke GitHub & Mengaktifkan GitHub Pages
-
-Repositori ini siap di-push ke: `https://github.com/dimas-sandi/Vid2gif.git`
-
-```bash
-# 1. Hubungkan ke repositori GitHub Anda
-git remote add origin https://github.com/dimas-sandi/Vid2gif.git
-
-# 2. Rename branch utama ke main dan push
-git branch -M main
-git push -u origin main
-```
-
-### Mengaktifkan GitHub Pages:
-1. Buka repositori Anda di GitHub: `https://github.com/dimas-sandi/Vid2gif`
-2. Masuk ke menu **Settings** > **Pages**.
 3. Di bagian **Build and deployment**:
    - **Source**: `Deploy from a branch`
    - **Branch**: `main` / `/ (root)`
