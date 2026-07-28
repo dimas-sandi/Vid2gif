@@ -116,11 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
       btnGenerateGif.disabled = false;
 
       const dur = sourceVideo.duration;
-      videoDurBadge.textContent = `Durasi: ${dur.toFixed(1)}s`;
+      videoDurBadge.textContent = `Durasi Video: ${dur.toFixed(1)}s`;
       trimStartInput.max = dur;
       trimEndInput.max = dur;
       trimStartInput.value = '0.0';
-      trimEndInput.value = dur.toFixed(1);
+      // Default to max 5.0 seconds clip
+      trimEndInput.value = Math.min(5.0, dur).toFixed(1);
 
       videoCropper.resetTransform();
       videoCropper.startRenderLoop();
@@ -193,16 +194,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function runVideoCalculator() {
     const start = parseFloat(trimStartInput.value) || 0;
     const end = parseFloat(trimEndInput.value) || sourceVideo.duration || 3;
-    const duration = Math.max(0.1, end - start);
+    const rawDuration = Math.max(0.1, end - start);
+    const effectiveDuration = Math.min(5.0, rawDuration);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
-    const calc = TFTCalculator.calculate(duration, 15, targetKb);
+    const calc = TFTCalculator.calculate(effectiveDuration, 15, targetKb);
     currentVideoCalc = calc;
 
     calcRes.textContent = '240 × 240 px';
     calcTotalFrames.textContent = `${calc.fps} FPS (${calc.totalFrames} Frame)`;
     calcColors.textContent = `${calc.colors} Warna`;
     calcEstSize.textContent = `~${calc.estimatedSizeKb} KB`;
-    calcMessage.textContent = calc.statusMessage;
+    calcMessage.textContent = rawDuration > 5.0
+      ? `Video ${rawDuration.toFixed(1)}s dipercepat otomatis menjadi 5.0s agar animasi tetap tajam & responsif!`
+      : calc.statusMessage;
     calcStatusTag.className = 'status-badge status-success';
     calcStatusTag.textContent = 'OK';
   }
@@ -218,19 +222,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startT = parseFloat(trimStartInput.value) || 0;
     const endT = parseFloat(trimEndInput.value) || sourceVideo.duration;
-    const duration = Math.max(0.1, endT - startT);
+    const rawDuration = Math.max(0.1, endT - startT);
+
+    // Max output GIF playback duration is 5.0 seconds
+    const outputDuration = Math.min(5.0, rawDuration);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
     const exportRes = 240;
 
-    let currentFps = currentVideoCalc ? currentVideoCalc.fps : 12;
-    let currentDeltaThreshold = 24;
+    let currentFps = currentVideoCalc ? currentVideoCalc.fps : 15;
+    let currentDeltaThreshold = 0;
     let finalGifBuffer = null;
     let attempts = 0;
     const maxAttempts = 6;
 
     while (attempts < maxAttempts) {
       attempts++;
-      const totalFrames = Math.max(1, Math.round(duration * currentFps));
+      const totalFrames = Math.max(1, Math.round(outputDuration * currentFps));
+      // Effective frame delay in ms so total animation fits in outputDuration (max 5s)
+      const frameDelayMs = Math.max(20, Math.round((outputDuration / totalFrames) * 1000));
 
       renderCanvas.width = exportRes;
       renderCanvas.height = exportRes;
@@ -238,13 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCtx.imageSmoothingEnabled = false;
 
       const framesPixelData = [];
-      progressStatusText.textContent = `Mengekstrak ${totalFrames} frame @ ${currentFps} FPS...`;
+      progressStatusText.textContent = `Mengekstrak ${totalFrames} frame (Durasi 5s @ ${currentFps} FPS)...`;
       progressBarFill.style.width = '0%';
       progressPercent.textContent = '0%';
 
-      // Extract frames one by one with robust seeking
+      // Extract frames evenly across [startT, endT]
       for (let i = 0; i < totalFrames; i++) {
-        const t = startT + (i / totalFrames) * duration;
+        const t = startT + (i / totalFrames) * rawDuration;
         await seekVideoTo(sourceVideo, t);
 
         // Yield to browser to prevent UI freeze
@@ -264,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         finalGifBuffer = await AsyncGIFEncoder.encodeInWorker(
           framesPixelData, exportRes, exportRes,
-          1000 / currentFps, 256, currentDeltaThreshold,
+          frameDelayMs, 256, currentDeltaThreshold,
           (pct) => {
             const total = 35 + Math.round((pct / 100) * 65);
             progressPercent.textContent = `${total}%`;
