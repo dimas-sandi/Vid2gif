@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Features Ezgif-Style Photorealistic 256-Color HD Encoding, Auto FPS Tuning, and Clean UI.
+ * Features Fast Non-Blocking Ezgif-Style Photorealistic 256-Color HD Encoding.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -189,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = Math.max(0.1, end - start);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
-    // Fixed 20 FPS default desired cap
     const calc = TFTCalculator.calculate(duration, 20, targetKb);
     currentVideoCalc = calc;
 
@@ -203,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.textContent = '256 Warna Ezgif HD';
   }
 
-  // --- EZGIF-STYLE PHOTOREALISTIC 256-COLOR HD GENERATOR ---
+  // --- FAST NON-BLOCKING 256-COLOR HD GENERATOR ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -218,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
     const exportRes = 240;
-    const exportColors = 256; // STRICTLY 256 COLORS FOR PHOTOREALISTIC SKIN TONES!
+    const exportColors = 256;
     let currentFps = currentVideoCalc ? currentVideoCalc.fps : 15;
 
     let finalGifBuffer = null;
@@ -241,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / currentFps);
-      encoder.setColorCount(256); // Strict 256 colors
+      encoder.setColorCount(256);
       encoder.setDither(true);
       encoder.start();
 
@@ -253,24 +252,25 @@ document.addEventListener('DOMContentLoaded', () => {
         videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        // sampleInterval = 1: 100% pixel sample learning for 256-color skin tones
-        encoder.addFrame(imgData.data, 1);
+        // sampleInterval = 10: Fast non-blocking NeuQuant palette sampling
+        encoder.addFrame(imgData.data, 10);
 
         const percent = Math.round(((i + 1) / totalFrames) * 100);
         progressPercent.textContent = `${percent}%`;
         progressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          progressStatusText.textContent = `Memproses Ezgif HD 250 Warna @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
+          progressStatusText.textContent = `Memproses Ezgif HD 256 Warna @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
         } else {
-          progressStatusText.textContent = `[Auto-FPS Pass ${attempts}] Menyesuaikan FPS ke ${currentFps} FPS (256 Warna HD)...`;
+          progressStatusText.textContent = `[Auto-FPS Pass ${attempts}] Menyesuaikan ke ${currentFps} FPS (256 Warna HD)...`;
         }
 
-        await new Promise((r) => setTimeout(r, 5));
+        // Yield to browser UI thread to prevent any "Page Unresponsive" freezing
+        await new Promise((r) => setTimeout(r, 12));
       }
 
       progressStatusText.textContent = 'Membuat stream GIF 256 Warna HD...';
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 15));
 
       finalGifBuffer = encoder.finish();
       const generatedKb = Math.round(finalGifBuffer.length / 1024);
@@ -281,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
         progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk menjaga 256 Warna Ezgif HD...`;
         await new Promise((r) => setTimeout(r, 400));
 
-        // Reduce FPS to hit target size while strictly keeping 256 colors!
         currentFps = Math.max(4, Math.round(currentFps * 0.75));
       }
     }
@@ -296,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalGifBuffer.length / 1024);
     resultSizeBadge.textContent = `${finalSizeKb} KB`;
     resFinalSize.textContent = `${finalSizeKb} KB (${finalGifBuffer.length.toLocaleString()} bytes)`;
-    resFinalResolution.textContent = `240 x 240 px (FIX Ezgif HD) @ ${currentFps} FPS (256 Warna)`;
+    resFinalResolution.textContent = `240 x 240 px (FIX HD) @ ${currentFps} FPS (256 Warna)`;
 
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
@@ -528,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / targetFps);
-      encoder.setColorCount(256); // Strict 256 colors
+      encoder.setColorCount(256);
       encoder.setDither(true);
       encoder.start();
 
@@ -549,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gifCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 1);
+        encoder.addFrame(imgData.data, 10);
 
         const percent = Math.round(((i + 1) / targetFrameCount) * 100);
         gifProgressPercent.textContent = `${percent}%`;
@@ -558,14 +557,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (attempts === 1) {
           gifProgressStatusText.textContent = `Memproses frame HD 240x240 (256 Warna) @ ${targetFps} FPS (${i + 1}/${targetFrameCount})...`;
         } else {
-          gifProgressStatusText.textContent = `[Auto-FPS Pass ${attempts}] Mengeset ke ${targetFps} FPS (256 Warna HD)...`;
+          gifProgressStatusText.textContent = `[Auto FPS Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${targetFps} FPS, 256 Warna HD)...`;
         }
 
-        await new Promise((r) => setTimeout(r, 5));
+        await new Promise((r) => setTimeout(r, 12));
       }
 
       gifProgressStatusText.textContent = 'Mengompresi file GIF 256 Warna HD...';
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 15));
 
       finalBuffer = encoder.finish();
       const generatedKb = Math.round(finalBuffer.length / 1024);
@@ -598,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `✨ Ezgif-Style Photorealistic HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
-    gifProgressContainer.classList.add('hidden');
+    progressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
     btnResizeGif.disabled = false;
 

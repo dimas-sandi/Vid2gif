@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
- * Ezgif-Style Photorealistic 256-Color Palette Engine with Floyd-Steinberg Dithering.
+ * Features Ezgif-Style Photorealistic 256-Color Palette Engine with Fast Non-blocking Sample Rate.
  * Corrected RGB Channel Mapping for exact skin tones and lighting fidelity.
  */
 
@@ -24,7 +24,7 @@ class NeuQuant {
     this.alpharadbias = 1 << this.alpharadbshift;
 
     this.pixels = pixels;
-    this.samplefac = samplefac;
+    this.samplefac = Math.max(1, samplefac);
 
     this.network = new Array(this.netsize);
     for (let i = 0; i < this.netsize; i++) {
@@ -52,7 +52,6 @@ class NeuQuant {
     let index = new Int32Array(this.netsize);
     for (let i = 0; i < this.netsize; i++) index[i] = i;
 
-    // Sort network by green channel for fast lookup index
     for (let i = 0; i < this.netsize; i++) {
       let smallpos = i;
       let smallval = this.network[i][1];
@@ -296,8 +295,8 @@ class GIFEncoder {
     this.out.push(0);
   }
 
-  addFrame(pixels, sampleInterval = 1) {
-    // Train palette using NeuQuant with 100% pixel sample rate (sampleInterval = 1) and exact RGB alignment
+  addFrame(pixels, sampleInterval = 10) {
+    // Fast non-blocking NeuQuant sample interval (sampleInterval = 10)
     const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
@@ -306,7 +305,7 @@ class GIFEncoder {
     const indexedPixels = new Uint8Array(this.width * this.height);
 
     if (this.useDither) {
-      // Floyd-Steinberg Sharp Dithering Algorithm with exact RGB error propagation
+      // Floyd-Steinberg Sharp Dithering Algorithm
       const w = this.width;
       const h = this.height;
       const rErr = new Float32Array((w + 2) * (h + 2));
