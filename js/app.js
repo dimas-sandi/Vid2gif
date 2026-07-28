@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Features Fast Non-Blocking Ezgif-Style Photorealistic 256-Color HD Encoding.
+ * Powered by AsyncGIFEncoder Web Worker (100% Background Multi-Threaded, Zero Main Thread Freezing).
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.textContent = '256 Warna Ezgif HD';
   }
 
-  // --- FAST NON-BLOCKING 256-COLOR HD GENERATOR ---
+  // --- MULTI-THREADED WEB WORKER HD GENERATOR (ZERO MAIN THREAD FREEZE) ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -217,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
     const exportRes = 240;
-    const exportColors = 256;
     let currentFps = currentVideoCalc ? currentVideoCalc.fps : 15;
 
     let finalGifBuffer = null;
@@ -238,11 +237,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       videoCropper.resetMotionBlend();
 
-      const encoder = new GIFEncoder(exportRes, exportRes);
-      encoder.setDelay(1000 / currentFps);
-      encoder.setColorCount(256);
-      encoder.setDither(true);
-      encoder.start();
+      const framesPixelData = [];
+
+      progressStatusText.textContent = `Mengambil frame video (${totalFrames} frame @ ${currentFps} FPS)...`;
+      progressBarFill.style.width = '0%';
+      progressPercent.textContent = '0%';
 
       for (let i = 0; i < totalFrames; i++) {
         const currentTime = startT + i * frameInterval;
@@ -252,33 +251,43 @@ document.addEventListener('DOMContentLoaded', () => {
         videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        // sampleInterval = 10: Fast non-blocking NeuQuant palette sampling
-        encoder.addFrame(imgData.data, 10);
+        // Create Uint8ClampedArray clone to safely transfer to Web Worker
+        framesPixelData.push(new Uint8ClampedArray(imgData.data));
 
-        const percent = Math.round(((i + 1) / totalFrames) * 100);
-        progressPercent.textContent = `${percent}%`;
-        progressBarFill.style.width = `${percent}%`;
-        
-        if (attempts === 1) {
-          progressStatusText.textContent = `Memproses Ezgif HD 256 Warna @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
-        } else {
-          progressStatusText.textContent = `[Auto-FPS Pass ${attempts}] Menyesuaikan ke ${currentFps} FPS (256 Warna HD)...`;
-        }
-
-        // Yield to browser UI thread to prevent any "Page Unresponsive" freezing
-        await new Promise((r) => setTimeout(r, 12));
+        const extractPct = Math.round(((i + 1) / totalFrames) * 40);
+        progressPercent.textContent = `${extractPct}%`;
+        progressBarFill.style.width = `${extractPct}%`;
       }
 
-      progressStatusText.textContent = 'Membuat stream GIF 256 Warna HD...';
-      await new Promise((r) => setTimeout(r, 15));
+      progressStatusText.textContent = `[Background Worker] Mengompresi GIF 256 Warna HD @ ${currentFps} FPS...`;
 
-      finalGifBuffer = encoder.finish();
+      // Delegate all LZW, NeuQuant, and Floyd-Steinberg encoding to Web Worker thread
+      try {
+        finalGifBuffer = await AsyncGIFEncoder.encodeInWorker(
+          framesPixelData,
+          exportRes,
+          exportRes,
+          1000 / currentFps,
+          256,
+          (pct) => {
+            const totalPct = 40 + Math.round((pct / 100) * 60);
+            progressPercent.textContent = `${totalPct}%`;
+            progressBarFill.style.width = `${totalPct}%`;
+          }
+        );
+      } catch (err) {
+        alert('Error Web Worker Encoding: ' + err.message);
+        btnGenerateGif.disabled = false;
+        progressContainer.classList.add('hidden');
+        return;
+      }
+
       const generatedKb = Math.round(finalGifBuffer.length / 1024);
 
       if (generatedKb <= targetKb || currentFps <= 4) {
         isWithinTarget = true;
       } else {
-        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk menjaga 256 Warna Ezgif HD...`;
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk 256 Warna HD...`;
         await new Promise((r) => setTimeout(r, 400));
 
         currentFps = Math.max(4, Math.round(currentFps * 0.75));
@@ -310,11 +319,29 @@ document.addEventListener('DOMContentLoaded', () => {
     resultCard.scrollIntoView({ behavior: 'smooth' });
   });
 
+  // Safety seeking helper with 400ms fallback timeout to prevent video seek hangs
   function seekVideoTo(video, time) {
     return new Promise((resolve) => {
-      const onSeeked = () => {
-        video.removeEventListener('seeked', onSeeked);
+      if (Math.abs(video.currentTime - time) < 0.01) {
         resolve();
+        return;
+      }
+      let resolved = false;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          video.removeEventListener('seeked', onSeeked);
+          resolve();
+        }
+      }, 400);
+
+      const onSeeked = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          video.removeEventListener('seeked', onSeeked);
+          resolve();
+        }
       };
       video.addEventListener('seeked', onSeeked);
       video.currentTime = time;
@@ -525,17 +552,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       gifCropper.resetMotionBlend();
 
-      const encoder = new GIFEncoder(exportRes, exportRes);
-      encoder.setDelay(1000 / targetFps);
-      encoder.setColorCount(256);
-      encoder.setDither(true);
-      encoder.start();
-
       const sourceFrames = decodedGifData.frames;
       let totalDurMs = 0;
       sourceFrames.forEach((f) => totalDurMs += (f.delay || 100));
       const totalDurationSec = totalDurMs / 1000;
       const targetFrameCount = Math.max(1, Math.round(totalDurationSec * targetFps));
+
+      const framesPixelData = [];
+      gifProgressStatusText.textContent = `Mengekstrak frame GIF (${targetFrameCount} frame @ ${targetFps} FPS)...`;
 
       for (let i = 0; i < targetFrameCount; i++) {
         const progress = i / targetFrameCount;
@@ -548,31 +572,41 @@ document.addEventListener('DOMContentLoaded', () => {
         gifCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 10);
+        framesPixelData.push(new Uint8ClampedArray(imgData.data));
 
-        const percent = Math.round(((i + 1) / targetFrameCount) * 100);
-        gifProgressPercent.textContent = `${percent}%`;
-        gifProgressBarFill.style.width = `${percent}%`;
-        
-        if (attempts === 1) {
-          gifProgressStatusText.textContent = `Memproses frame HD 240x240 (256 Warna) @ ${targetFps} FPS (${i + 1}/${targetFrameCount})...`;
-        } else {
-          gifProgressStatusText.textContent = `[Auto FPS Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${targetFps} FPS, 256 Warna HD)...`;
-        }
-
-        await new Promise((r) => setTimeout(r, 12));
+        const extractPct = Math.round(((i + 1) / targetFrameCount) * 40);
+        gifProgressPercent.textContent = `${extractPct}%`;
+        gifProgressBarFill.style.width = `${extractPct}%`;
       }
 
-      gifProgressStatusText.textContent = 'Mengompresi file GIF 256 Warna HD...';
-      await new Promise((r) => setTimeout(r, 15));
+      gifProgressStatusText.textContent = `[Background Worker] Mengompresi GIF 256 Warna HD...`;
 
-      finalBuffer = encoder.finish();
+      try {
+        finalBuffer = await AsyncGIFEncoder.encodeInWorker(
+          framesPixelData,
+          exportRes,
+          exportRes,
+          1000 / targetFps,
+          256,
+          (pct) => {
+            const totalPct = 40 + Math.round((pct / 100) * 60);
+            gifProgressPercent.textContent = `${totalPct}%`;
+            gifProgressBarFill.style.width = `${totalPct}%`;
+          }
+        );
+      } catch (err) {
+        alert('Error Web Worker Encoding: ' + err.message);
+        btnResizeGif.disabled = false;
+        gifProgressContainer.classList.add('hidden');
+        return;
+      }
+
       const generatedKb = Math.round(finalBuffer.length / 1024);
 
       if (generatedKb <= targetKb || targetFps <= 4) {
         isWithinTarget = true;
       } else {
-        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk menjaga 256 Warna Ezgif HD...`;
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk 256 Warna HD...`;
         await new Promise((r) => setTimeout(r, 400));
 
         targetFps = Math.max(4, Math.round(targetFps * 0.75));
@@ -597,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `✨ Ezgif-Style Photorealistic HD (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
-    progressContainer.classList.add('hidden');
+    gifProgressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
     btnResizeGif.disabled = false;
 

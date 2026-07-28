@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
- * Features Ezgif-Style Photorealistic 256-Color Palette Engine with Fast Non-blocking Sample Rate.
+ * Features Web Worker Multi-Threaded Background Processing (Zero Main Thread Blocking).
  * Corrected RGB Channel Mapping for exact skin tones and lighting fidelity.
  */
 
@@ -296,7 +296,6 @@ class GIFEncoder {
   }
 
   addFrame(pixels, sampleInterval = 10) {
-    // Fast non-blocking NeuQuant sample interval (sampleInterval = 10)
     const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
@@ -305,7 +304,6 @@ class GIFEncoder {
     const indexedPixels = new Uint8Array(this.width * this.height);
 
     if (this.useDither) {
-      // Floyd-Steinberg Sharp Dithering Algorithm
       const w = this.width;
       const h = this.height;
       const rErr = new Float32Array((w + 2) * (h + 2));
@@ -520,4 +518,72 @@ class LZWEncoder {
   }
 }
 
+// --- Asynchronous Background Web Worker Encoder Helper ---
+class AsyncGIFEncoder {
+  static encodeInWorker(framesPixelData, width, height, delayMs, colors = 256, onProgress = null) {
+    return new Promise((resolve, reject) => {
+      // Build self-contained Web Worker script string
+      const workerCode = `
+        ${NeuQuant.toString()}
+        ${LZWEncoder.toString()}
+        ${GIFEncoder.toString()}
+
+        self.onmessage = function(e) {
+          try {
+            const { frames, width, height, delayMs, colors } = e.data;
+            const encoder = new GIFEncoder(width, height);
+            encoder.setDelay(delayMs);
+            encoder.setColorCount(colors);
+            encoder.setDither(true);
+            encoder.start();
+
+            for (let i = 0; i < frames.length; i++) {
+              encoder.addFrame(frames[i], 10);
+              const pct = Math.round(((i + 1) / frames.length) * 100);
+              self.postMessage({ type: 'progress', percent: pct });
+            }
+
+            const buffer = encoder.finish();
+            self.postMessage({ type: 'complete', buffer: buffer }, [buffer.buffer]);
+          } catch(err) {
+            self.postMessage({ type: 'error', error: err.message });
+          }
+        };
+      `;
+
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const worker = new Worker(URL.createObjectURL(blob));
+
+      worker.onmessage = (e) => {
+        const msg = e.data;
+        if (msg.type === 'progress') {
+          if (onProgress) onProgress(msg.percent);
+        } else if (msg.type === 'complete') {
+          worker.terminate();
+          resolve(msg.buffer);
+        } else if (msg.type === 'error') {
+          worker.terminate();
+          reject(new Error(msg.error));
+        }
+      };
+
+      worker.onerror = (err) => {
+        worker.terminate();
+        reject(err);
+      };
+
+      // Transfer frame buffers to Web Worker without copying
+      const transferables = framesPixelData.map((f) => f.buffer);
+      worker.postMessage({
+        frames: framesPixelData,
+        width: width,
+        height: height,
+        delayMs: delayMs,
+        colors: colors
+      }, transferables);
+    });
+  }
+}
+
 window.GIFEncoder = GIFEncoder;
+window.AsyncGIFEncoder = AsyncGIFEncoder;
