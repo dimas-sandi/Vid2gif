@@ -53,24 +53,15 @@ class NeuQuant {
     this.lookupCache = null;
   }
 
+  // Read palette directly from network (already sorted by setUpArrays).
+  // DO NOT re-sort here — indices must match buildLookupCache()!
   colorMap() {
     const map = new Uint8Array(this.netsize * 3);
-    // Sort network by green channel for GIF output ordering
-    const sorted = [];
-    for (let i = 0; i < this.netsize; i++) {
-      sorted.push({
-        r: Math.round(this.network[i][0]),
-        g: Math.round(this.network[i][1]),
-        b: Math.round(this.network[i][2])
-      });
-    }
-    sorted.sort((a, b) => a.g - b.g);
-
     let k = 0;
     for (let i = 0; i < this.netsize; i++) {
-      map[k++] = sorted[i].r;
-      map[k++] = sorted[i].g;
-      map[k++] = sorted[i].b;
+      map[k++] = Math.max(0, Math.min(255, Math.round(this.network[i][0])));
+      map[k++] = Math.max(0, Math.min(255, Math.round(this.network[i][1])));
+      map[k++] = Math.max(0, Math.min(255, Math.round(this.network[i][2])));
     }
     return map;
   }
@@ -246,7 +237,7 @@ class GIFEncoder {
     this.delay = 10;
     this.repeat = 0;
     this.colorCount = 256;
-    this.useDither = false; // Disabled by default — fast + sharp at 240x240
+    this.useDither = true; // Floyd-Steinberg dithering — safe with O(1) cache
 
     this.enableDelta = true;
     this.deltaThreshold = 24;
@@ -270,7 +261,8 @@ class GIFEncoder {
   }
 
   setGlobalPaletteFromSample(sampledPixels) {
-    const sampleFac = Math.max(30, Math.floor(sampledPixels.length / 20000));
+    // Lower sampleFac = better palette quality (more pixels sampled for training)
+    const sampleFac = Math.max(10, Math.floor(sampledPixels.length / 60000));
     this.globalNQ = new NeuQuant(sampledPixels, sampleFac, this.colorCount);
     this.globalNQ.learn();
     this.globalNQ.setUpArrays();
@@ -329,28 +321,87 @@ class GIFEncoder {
     let hasTransparent = false;
     const isFirst = (this.frames.length === 0);
 
-    // FAST PATH: O(1) lookup per pixel via cache table
-    let k = 0;
-    for (let i = 0; i < totalPixels; i++) {
-      const pi = i * 4;
-      const r = pixels[pi];
-      const g = pixels[pi + 1];
-      const b = pixels[pi + 2];
+    if (this.useDither) {
+      // Floyd-Steinberg dithering with O(1) lookup — high quality + fast
+      const errW = w + 2;
+      const rErr = new Float32Array(errW * (h + 1));
+      const gErr = new Float32Array(errW * (h + 1));
+      const bErr = new Float32Array(errW * (h + 1));
 
-      // Delta compression: skip unchanged pixels
-      if (!isFirst && this.enableDelta && this.prevFramePixels) {
-        const dr = r - this.prevFramePixels[pi];
-        const dg = g - this.prevFramePixels[pi + 1];
-        const db = b - this.prevFramePixels[pi + 2];
-        if (Math.abs(dr) + Math.abs(dg) + Math.abs(db) < this.deltaThreshold) {
-          indexedPixels[k++] = this.transparentIndex;
-          hasTransparent = true;
-          continue;
+      let k = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const pi = (y * w + x) * 4;
+          const ei = y * errW + x + 1;
+
+          let r = pixels[pi] + rErr[ei];
+          let g = pixels[pi + 1] + gErr[ei];
+          let b = pixels[pi + 2] + bErr[ei];
+          r = Math.max(0, Math.min(255, r));
+          g = Math.max(0, Math.min(255, g));
+          b = Math.max(0, Math.min(255, b));
+
+          // Delta compression
+          if (!isFirst && this.enableDelta && this.prevFramePixels) {
+            const diff = Math.abs(r - this.prevFramePixels[pi])
+                       + Math.abs(g - this.prevFramePixels[pi + 1])
+                       + Math.abs(b - this.prevFramePixels[pi + 2]);
+            if (diff < this.deltaThreshold) {
+              indexedPixels[k++] = this.transparentIndex;
+              hasTransparent = true;
+              continue;
+            }
+          }
+
+          // O(1) color lookup
+          const idx = nq.lookupRGB(r | 0, g | 0, b | 0);
+          indexedPixels[k++] = idx;
+
+          // Compute and diffuse error
+          const er = r - colorMap[idx * 3];
+          const eg = g - colorMap[idx * 3 + 1];
+          const eb = b - colorMap[idx * 3 + 2];
+
+          // Right neighbor
+          rErr[ei + 1]       += er * 0.4375; // 7/16
+          gErr[ei + 1]       += eg * 0.4375;
+          bErr[ei + 1]       += eb * 0.4375;
+          // Bottom-left
+          rErr[ei + errW - 1] += er * 0.1875; // 3/16
+          gErr[ei + errW - 1] += eg * 0.1875;
+          bErr[ei + errW - 1] += eb * 0.1875;
+          // Bottom
+          rErr[ei + errW]     += er * 0.3125; // 5/16
+          gErr[ei + errW]     += eg * 0.3125;
+          bErr[ei + errW]     += eb * 0.3125;
+          // Bottom-right
+          rErr[ei + errW + 1] += er * 0.0625; // 1/16
+          gErr[ei + errW + 1] += eg * 0.0625;
+          bErr[ei + errW + 1] += eb * 0.0625;
         }
       }
+    } else {
+      // No-dither fast path
+      let k = 0;
+      for (let i = 0; i < totalPixels; i++) {
+        const pi = i * 4;
+        const r = pixels[pi];
+        const g = pixels[pi + 1];
+        const b = pixels[pi + 2];
 
-      // O(1) color lookup via 15-bit cache
-      indexedPixels[k++] = nq.lookupRGB(r, g, b);
+        if (!isFirst && this.enableDelta && this.prevFramePixels) {
+          const diff = Math.abs(r - this.prevFramePixels[pi])
+                     + Math.abs(g - this.prevFramePixels[pi + 1])
+                     + Math.abs(b - this.prevFramePixels[pi + 2]);
+          if (diff < this.deltaThreshold) {
+            indexedPixels[k++] = this.transparentIndex;
+            hasTransparent = true;
+            continue;
+          }
+        }
+
+        indexedPixels[k++] = nq.lookupRGB(r, g, b);
+      }
     }
 
     this.prevFramePixels = new Uint8ClampedArray(pixels);
