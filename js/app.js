@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Features Smart Auto-Fit Multi-Pass Guarantee Engine ensuring output GIF NEVER exceeds target file size.
+ * Features High-Definition Razor-Sharp GIF Generation with Floyd-Steinberg Dithering and Smart Target Enforcement.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       calcStatusTag.classList.add('status-success');
-      calcStatusTag.textContent = 'Optimal';
+      calcStatusTag.textContent = 'Optimal (Tajam HD)';
     } else if (calc.status === 'warning') {
       calcStatusTag.classList.add('status-warning');
       calcStatusTag.textContent = 'Mendekati Batas';
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- SMART AUTO-FIT MULTI-PASS GENERATOR (VIDEO TO GIF) ---
+  // --- SMART HIGH-DEFINITION MULTI-PASS GENERATOR ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -267,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxAttempts = 6;
     let isWithinTarget = false;
 
-    // Multi-pass Auto-Fit Guarantee Loop
     while (!isWithinTarget && attempts < maxAttempts) {
       attempts++;
       const frameInterval = 1 / currentFps;
@@ -276,13 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCanvas.width = exportRes;
       renderCanvas.height = exportRes;
       const renderCtx = renderCanvas.getContext('2d');
+      renderCtx.imageSmoothingEnabled = true;
+      renderCtx.imageSmoothingQuality = 'high';
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / currentFps);
       encoder.setColorCount(exportColors);
+      encoder.setDither(true); // Floyd-Steinberg Dithering for sharp detail
       encoder.start();
-
-      const applyFilter = sourceVideo.videoWidth > 1280 || attempts > 1; // apply spatial noise smoothing if high-res
 
       for (let i = 0; i < totalFrames; i++) {
         const currentTime = startT + i * frameInterval;
@@ -291,34 +291,32 @@ document.addEventListener('DOMContentLoaded', () => {
         videoCropper.exportFrameToCanvas(renderCanvas);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 10, applyFilter);
+        encoder.addFrame(imgData.data, 10);
 
         const percent = Math.round(((i + 1) / totalFrames) * 100);
         progressPercent.textContent = `${percent}%`;
         progressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          progressStatusText.textContent = `Memproses frame ${i + 1} / ${totalFrames} (${exportRes}x${exportRes} px)...`;
+          progressStatusText.textContent = `Memproses frame HD ${i + 1} / ${totalFrames} (${exportRes}x${exportRes} px)...`;
         } else {
-          progressStatusText.textContent = `[Smart Auto-Fit Pass ${attempts}] Frame ${i + 1}/${totalFrames} (${exportRes}x${exportRes} px, ${exportColors} warna)...`;
+          progressStatusText.textContent = `[Auto-Fit Pass ${attempts}] Menjaga ketajaman... Frame ${i + 1}/${totalFrames} (${exportRes}x${exportRes} px, ${exportColors} warna)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      progressStatusText.textContent = 'Membuat stream file GIF...';
+      progressStatusText.textContent = 'Membuat stream file GIF HD...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalGifBuffer = encoder.finish();
       const generatedKb = Math.round(finalGifBuffer.length / 1024);
 
-      // Check if generated size strictly fits target KB
       if (generatedKb <= targetKb || chkManualOverride.checked) {
         isWithinTarget = true;
       } else {
-        // Step down parameters automatically
-        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Mengoptimalkan otomatis ke tingkat lebih hemat...`;
-        await new Promise((r) => setTimeout(r, 600));
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi tajam ke tingkat lebih hemat...`;
+        await new Promise((r) => setTimeout(r, 500));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, currentFps);
         exportRes = nextConfig.res;
@@ -342,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `🛡️ Strictly Guaranteed (-${diff} KB di bawah target ${targetKb} KB)` 
+      ? `✨ High-Definition Tajam (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
@@ -548,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gifCalcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       gifCalcStatusTag.classList.add('status-success');
-      gifCalcStatusTag.textContent = 'Optimal';
+      gifCalcStatusTag.textContent = 'Optimal (Tajam HD)';
     } else if (calc.status === 'warning') {
       gifCalcStatusTag.classList.add('status-warning');
       gifCalcStatusTag.textContent = 'Mendekati Batas';
@@ -558,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- SMART AUTO-FIT MULTI-PASS GENERATOR (GIF RESIZER) ---
   btnResizeGif.addEventListener('click', async () => {
     if (!decodedGifData) return;
 
@@ -581,10 +578,13 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCanvas.width = exportRes;
       renderCanvas.height = exportRes;
       const renderCtx = renderCanvas.getContext('2d');
+      renderCtx.imageSmoothingEnabled = true;
+      renderCtx.imageSmoothingQuality = 'high';
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / targetFps);
       encoder.setColorCount(exportColors);
+      encoder.setDither(true);
       encoder.start();
 
       const sourceFrames = decodedGifData.frames;
@@ -603,22 +603,22 @@ document.addEventListener('DOMContentLoaded', () => {
         gifCropper.exportFrameToCanvas(renderCanvas);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 10, attempts > 1);
+        encoder.addFrame(imgData.data, 10);
 
         const percent = Math.round(((i + 1) / targetFrameCount) * 100);
         gifProgressPercent.textContent = `${percent}%`;
         gifProgressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          gifProgressStatusText.textContent = `Memproses frame ${i + 1} / ${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+          gifProgressStatusText.textContent = `Memproses frame HD ${i + 1} / ${targetFrameCount} (${exportRes}x${exportRes} px)...`;
         } else {
-          gifProgressStatusText.textContent = `[Smart Auto-Fit Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+          gifProgressStatusText.textContent = `[Auto-Fit Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${exportRes}x${exportRes} px)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      gifProgressStatusText.textContent = 'Mengompresi file GIF...';
+      gifProgressStatusText.textContent = 'Mengompresi file GIF HD...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalBuffer = encoder.finish();
@@ -627,8 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb) {
         isWithinTarget = true;
       } else {
-        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi ke tingkat lebih hemat...`;
-        await new Promise((r) => setTimeout(r, 600));
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi tajam ke tingkat lebih hemat...`;
+        await new Promise((r) => setTimeout(r, 500));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, targetFps);
         exportRes = nextConfig.res;
@@ -652,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `🛡️ Strictly Guaranteed (-${diff} KB di bawah target ${targetKb} KB)` 
+      ? `✨ High-Definition Tajam (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');

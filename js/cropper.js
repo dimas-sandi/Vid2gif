@@ -1,6 +1,7 @@
 /**
  * Vid2GIF - WhatsApp Style Interactive Cropper Engine
  * Supports 1:1 square ratio, drag-to-pan, pinch/wheel zoom, center snap, and TFT mask previews.
+ * Features High-Quality Sharp Canvas Resampling (Zero Blur).
  */
 class VideoCropper {
   constructor(canvasElement, videoElement) {
@@ -12,7 +13,7 @@ class VideoCropper {
     this.zoom = 1.0;
     this.minZoom = 1.0;
     this.maxZoom = 4.0;
-    this.panX = 0; // relative offset from center in px
+    this.panX = 0;
     this.panY = 0;
 
     // Mask Mode: 'round' (GC9A01 1.28" TFT) or 'square'
@@ -39,19 +40,16 @@ class VideoCropper {
   initEvents() {
     const c = this.canvas;
 
-    // Mouse Drag
     c.addEventListener('mousedown', (e) => this.onPointerDown(e.clientX, e.clientY));
     window.addEventListener('mousemove', (e) => this.onPointerMove(e.clientX, e.clientY));
     window.addEventListener('mouseup', () => this.onPointerUp());
 
-    // Wheel Zoom
     c.addEventListener('wheel', (e) => {
       e.preventDefault();
       const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
       this.setZoom(this.zoom * zoomFactor);
     }, { passive: false });
 
-    // Touch events for Mobile/Tablet
     c.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         this.onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
@@ -117,7 +115,7 @@ class VideoCropper {
   }
 
   setMaskMode(mode) {
-    this.maskMode = mode; // 'round' or 'square'
+    this.maskMode = mode;
     this.render();
   }
 
@@ -138,13 +136,13 @@ class VideoCropper {
   }
 
   clampPan() {
-    if (!this.video || !this.video.videoWidth) return;
+    if (!this.video) return;
+    const vw = this.video.videoWidth || this.video.width;
+    const vh = this.video.videoHeight || this.video.height;
+    if (!vw || !vh) return;
 
-    const vw = this.video.videoWidth;
-    const vh = this.video.videoHeight;
     const aspect = vw / vh;
 
-    // Calculate base draw size inside 1:1 box
     let baseW, baseH;
     if (aspect >= 1) {
       baseH = this.canvas.height;
@@ -186,41 +184,38 @@ class VideoCropper {
     const h = this.canvas.height;
 
     this.ctx.clearRect(0, 0, w, h);
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'high';
 
-    // Draw background
     this.ctx.fillStyle = '#0a0d14';
     this.ctx.fillRect(0, 0, w, h);
 
-    if (this.video && this.video.readyState >= 2) {
-      const vw = this.video.videoWidth;
-      const vh = this.video.videoHeight;
-      const aspect = vw / vh;
+    if (this.video) {
+      const vw = this.video.videoWidth || this.video.width;
+      const vh = this.video.videoHeight || this.video.height;
 
-      let baseW, baseH;
-      if (aspect >= 1) {
-        baseH = h;
-        baseW = baseH * aspect;
-      } else {
-        baseW = w;
-        baseH = baseW / aspect;
+      if (vw && vh) {
+        const aspect = vw / vh;
+
+        let baseW, baseH;
+        if (aspect >= 1) {
+          baseH = h;
+          baseW = baseH * aspect;
+        } else {
+          baseW = w;
+          baseH = baseW / aspect;
+        }
+
+        const scaledW = baseW * this.zoom;
+        const scaledH = baseH * this.zoom;
+
+        const drawX = (w - scaledW) / 2 + this.panX;
+        const drawY = (h - scaledH) / 2 + this.panY;
+
+        this.ctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
       }
-
-      const scaledW = baseW * this.zoom;
-      const scaledH = baseH * this.zoom;
-
-      const drawX = (w - scaledW) / 2 + this.panX;
-      const drawY = (h - scaledH) / 2 + this.panY;
-
-      this.ctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
-    } else {
-      // Empty state placeholder inside cropper canvas
-      this.ctx.fillStyle = '#1e293b';
-      this.ctx.font = '14px Outfit, sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('Pilih file video untuk mulai crop', w / 2, h / 2);
     }
 
-    // Draw Mask & Grid Overlay
     this.drawOverlay();
   }
 
@@ -232,21 +227,18 @@ class VideoCropper {
     ctx.save();
 
     if (this.maskMode === 'round') {
-      // Darken area outside circle (1.28" GC9A01 TFT shape)
       ctx.fillStyle = 'rgba(10, 13, 20, 0.75)';
       ctx.beginPath();
       ctx.rect(0, 0, w, h);
       ctx.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2, true);
       ctx.fill();
 
-      // Draw subtle circular cyan outline
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.9)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Rule of thirds crosshair inside circle
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -257,12 +249,10 @@ class VideoCropper {
       ctx.stroke();
 
     } else {
-      // Square boundary
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.9)';
       ctx.lineWidth = 2;
       ctx.strokeRect(1, 1, w - 2, h - 2);
 
-      // Grid lines
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -277,21 +267,26 @@ class VideoCropper {
   }
 
   /**
-   * Render frame directly onto a target offscreen canvas at specified target resolution (e.g. 240x240, 180x180)
+   * Render frame directly onto target offscreen canvas with high-quality razor-sharp resampling
    */
   exportFrameToCanvas(targetCanvas) {
     const tw = targetCanvas.width;
     const th = targetCanvas.height;
     const tctx = targetCanvas.getContext('2d');
 
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'high';
+
     tctx.clearRect(0, 0, tw, th);
     tctx.fillStyle = '#000000';
     tctx.fillRect(0, 0, tw, th);
 
-    if (!this.video || this.video.readyState < 2) return;
+    if (!this.video) return;
 
-    const vw = this.video.videoWidth;
-    const vh = this.video.videoHeight;
+    const vw = this.video.videoWidth || this.video.width;
+    const vh = this.video.videoHeight || this.video.height;
+    if (!vw || !vh) return;
+
     const aspect = vw / vh;
 
     let baseW, baseH;
@@ -306,7 +301,6 @@ class VideoCropper {
     const scaledW = baseW * this.zoom;
     const scaledH = baseH * this.zoom;
 
-    // Scale pan according to target resolution ratio
     const scaleRatio = tw / this.canvas.width;
     const drawX = (tw - scaledW) / 2 + (this.panX * scaleRatio);
     const drawY = (th - scaledH) / 2 + (this.panY * scaleRatio);

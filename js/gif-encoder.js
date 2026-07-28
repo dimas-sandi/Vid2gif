@@ -1,6 +1,6 @@
 /**
- * Vid2GIF - Pure Client-side GIF Encoder Engine
- * Includes NeuQuant Color Quantization, LZW GIF Stream Encoder, and Spatial Noise Pre-filter.
+ * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
+ * Features NeuQuant Color Quantization with Floyd-Steinberg Dithering for crystal-clear, razor-sharp output.
  */
 
 // --- NeuQuant Color Quantizer ---
@@ -239,6 +239,7 @@ class GIFEncoder {
     this.delay = 10;
     this.repeat = 0;
     this.colorCount = 256;
+    this.useDither = true; // Enable sharp Floyd-Steinberg dithering
   }
 
   setDelay(ms) {
@@ -251,6 +252,10 @@ class GIFEncoder {
 
   setColorCount(count) {
     this.colorCount = count;
+  }
+
+  setDither(enabled) {
+    this.useDither = enabled;
   }
 
   start() {
@@ -289,56 +294,75 @@ class GIFEncoder {
     this.out.push(0);
   }
 
-  /**
-   * Spatial noise reduction pre-filter for high-resolution video frames
-   * Smooths pixel variance to drastically increase LZW compression efficiency
-   */
-  static applySpatialSmoothing(pixels, width, height) {
-    const output = new Uint8ClampedArray(pixels.length);
-    output.set(pixels);
-
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const idx = (y * width + x) * 4;
-
-        // 3x3 Box average for R, G, B channels
-        let r = 0, g = 0, b = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            const nIdx = ((y + dy) * width + (x + dx)) * 4;
-            r += pixels[nIdx];
-            g += pixels[nIdx + 1];
-            b += pixels[nIdx + 2];
-          }
-        }
-
-        output[idx] = Math.round(r / 9);
-        output[idx + 1] = Math.round(g / 9);
-        output[idx + 2] = Math.round(b / 9);
-      }
-    }
-    return output;
-  }
-
-  addFrame(pixels, sampleInterval = 10, smoothFilter = false) {
-    let processedPixels = pixels;
-    if (smoothFilter) {
-      processedPixels = GIFEncoder.applySpatialSmoothing(pixels, this.width, this.height);
-    }
-
-    const nq = new NeuQuant(processedPixels, sampleInterval, this.colorCount);
+  addFrame(pixels, sampleInterval = 10) {
+    // Train palette using NeuQuant on crisp raw pixels (zero blur!)
+    const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
 
     const colorMap = nq.colorMap();
     const indexedPixels = new Uint8Array(this.width * this.height);
 
-    let k = 0;
-    for (let i = 0; i < processedPixels.length; i += 4) {
-      let b = processedPixels[i];
-      let g = processedPixels[i + 1];
-      let r = processedPixels[i + 2];
-      indexedPixels[k++] = nq.lookupRGB(b, g, r);
+    if (this.useDither) {
+      // Floyd-Steinberg Sharp Dithering Algorithm
+      const w = this.width;
+      const h = this.height;
+      const rErr = new Float32Array((w + 2) * (h + 2));
+      const gErr = new Float32Array((w + 2) * (h + 2));
+      const bErr = new Float32Array((w + 2) * (h + 2));
+
+      let k = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const pixIdx = (y * w + x) * 4;
+          const errIdx = (y + 1) * (w + 2) + (x + 1);
+
+          let b = pixels[pixIdx] + bErr[errIdx];
+          let g = pixels[pixIdx + 1] + gErr[errIdx];
+          let r = pixels[pixIdx + 2] + rErr[errIdx];
+
+          b = Math.max(0, Math.min(255, b));
+          g = Math.max(0, Math.min(255, g));
+          r = Math.max(0, Math.min(255, r));
+
+          const colorIdx = nq.lookupRGB(b, g, r);
+          indexedPixels[k++] = colorIdx;
+
+          const paletteB = colorMap[colorIdx * 3];
+          const paletteG = colorMap[colorIdx * 3 + 1];
+          const paletteR = colorMap[colorIdx * 3 + 2];
+
+          const errB = b - paletteB;
+          const errG = g - paletteG;
+          const errR = r - paletteR;
+
+          // Propagate error to neighboring pixels (Floyd-Steinberg coefficients)
+          bErr[errIdx + 1] += errB * (7 / 16);
+          gErr[errIdx + 1] += errG * (7 / 16);
+          rErr[errIdx + 1] += errR * (7 / 16);
+
+          bErr[errIdx + w + 1] += errB * (3 / 16);
+          gErr[errIdx + w + 1] += errG * (3 / 16);
+          rErr[errIdx + w + 1] += errR * (3 / 16);
+
+          bErr[errIdx + w + 2] += errB * (5 / 16);
+          gErr[errIdx + w + 2] += errG * (5 / 16);
+          rErr[errIdx + w + 2] += errR * (5 / 16);
+
+          bErr[errIdx + w + 3] += errB * (1 / 16);
+          gErr[errIdx + w + 3] += errG * (1 / 16);
+          rErr[errIdx + w + 3] += errR * (1 / 16);
+        }
+      }
+    } else {
+      // Direct quantization without dithering
+      let k = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        let b = pixels[i];
+        let g = pixels[i + 1];
+        let r = pixels[i + 2];
+        indexedPixels[k++] = nq.lookupRGB(b, g, r);
+      }
     }
 
     if (this.frames.length === 0 && this.repeat >= 0) {
