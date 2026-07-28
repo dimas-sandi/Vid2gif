@@ -235,9 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCanvas.width = exportRes;
       renderCanvas.height = exportRes;
       const renderCtx = renderCanvas.getContext('2d');
-      renderCtx.imageSmoothingEnabled = true;
-      renderCtx.imageSmoothingQuality = 'high';
-      videoCropper.resetMotionBlend();
+      renderCtx.imageSmoothingEnabled = false;
 
       const framesPixelData = [];
       progressStatusText.textContent = `Mengekstrak ${totalFrames} frame @ ${currentFps} FPS...`;
@@ -252,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Yield to browser to prevent UI freeze
         await new Promise(r => setTimeout(r, 0));
 
-        videoCropper.exportFrameToCanvas(renderCanvas, currentFps < 15, 0.22);
+        videoCropper.exportFrameToCanvas(renderCanvas);
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
         framesPixelData.push(new Uint8ClampedArray(imgData.data));
 
@@ -515,9 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCanvas.width = exportRes;
       renderCanvas.height = exportRes;
       const ctx = renderCanvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      gifCropper.resetMotionBlend();
+      ctx.imageSmoothingEnabled = false;
 
       const frames = decodedGifData.frames;
       let totalMs = 0;
@@ -531,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (let i = 0; i < frameCount; i++) {
         const srcIdx = Math.min(frames.length - 1, Math.floor((i / frameCount) * frames.length));
         gifCropper.video = frames[srcIdx].canvas;
-        gifCropper.exportFrameToCanvas(renderCanvas, fps < 15, 0.22);
+        gifCropper.exportFrameToCanvas(renderCanvas);
         const imgData = ctx.getImageData(0, 0, exportRes, exportRes);
         pixelData.push(new Uint8ClampedArray(imgData.data));
 

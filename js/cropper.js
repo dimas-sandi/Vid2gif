@@ -280,11 +280,10 @@ class VideoCropper {
   }
 
   /**
-   * 2-Stage Step-Down Video Resampler:
-   * Step 1: Render video to 480x480 intermediate canvas (preserves sharp details, eliminates 4K aliasing)
-   * Step 2: Render 480x480 to final 240x240 target canvas with high-quality Lanczos-style smoothing
+   * Direct sharp export: Render video frame straight to 240x240 target canvas.
+   * No intermediate canvas, no smoothing, no motion blend — pixel-sharp output.
    */
-  exportFrameToCanvas(targetCanvas, enableMotionBlend = true, blendFactor = 0.22) {
+  exportFrameToCanvas(targetCanvas) {
     const tw = targetCanvas.width;
     const th = targetCanvas.height;
     const tctx = targetCanvas.getContext('2d');
@@ -294,62 +293,30 @@ class VideoCropper {
     const vh = this.video.videoHeight || this.video.height;
     if (!vw || !vh) return;
 
-    // --- STAGE 1: Render to Intermediate 480x480 Canvas ---
-    const iw = 480;
-    const ih = 480;
-    const ictx = this.intCtx;
-
-    ictx.imageSmoothingEnabled = true;
-    ictx.imageSmoothingQuality = 'high';
-    ictx.clearRect(0, 0, iw, ih);
-    ictx.fillStyle = '#000000';
-    ictx.fillRect(0, 0, iw, ih);
+    // SHARP: No smoothing = crisp pixels, no blur
+    tctx.imageSmoothingEnabled = false;
+    tctx.clearRect(0, 0, tw, th);
+    tctx.fillStyle = '#000000';
+    tctx.fillRect(0, 0, tw, th);
 
     const aspect = vw / vh;
     let baseW, baseH;
     if (aspect >= 1) {
-      baseH = ih;
+      baseH = th;
       baseW = baseH * aspect;
     } else {
-      baseW = iw;
+      baseW = tw;
       baseH = baseW / aspect;
     }
 
     const scaledW = baseW * this.zoom;
     const scaledH = baseH * this.zoom;
 
-    const scaleRatio = iw / this.canvas.width;
-    const drawX = (iw - scaledW) / 2 + (this.panX * scaleRatio);
-    const drawY = (ih - scaledH) / 2 + (this.panY * scaleRatio);
+    const drawX = (tw - scaledW) / 2 + this.panX * (tw / this.canvas.width);
+    const drawY = (th - scaledH) / 2 + this.panY * (th / this.canvas.height);
 
-    ictx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
-
-    // --- STAGE 2: Render 480x480 Intermediate Canvas to 240x240 Target Canvas ---
-    tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = 'high';
-    tctx.clearRect(0, 0, tw, th);
-    tctx.drawImage(this.intCanvas, 0, 0, iw, ih, 0, 0, tw, th);
-
-    // Apply Motion Blending for low-FPS smooth motion
-    if (enableMotionBlend) {
-      const currImageData = tctx.getImageData(0, 0, tw, th);
-      const curr = currImageData.data;
-
-      if (this.prevImageData) {
-        const prev = this.prevImageData.data;
-        const bFactor = Math.min(0.35, Math.max(0.05, blendFactor));
-        const invFactor = 1 - bFactor;
-
-        for (let i = 0; i < curr.length; i += 4) {
-          curr[i] = Math.round(curr[i] * invFactor + prev[i] * bFactor);
-          curr[i + 1] = Math.round(curr[i + 1] * invFactor + prev[i + 1] * bFactor);
-          curr[i + 2] = Math.round(curr[i + 2] * invFactor + prev[i + 2] * bFactor);
-        }
-        tctx.putImageData(currImageData, 0, 0);
-      }
-
-      this.prevImageData = currImageData;
-    }
+    tctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
+    // NO motion blend — every frame is crisp and independent
   }
 }
 
