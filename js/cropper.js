@@ -1,7 +1,7 @@
 /**
  * Vid2GIF - WhatsApp Style Interactive Cropper Engine
  * Supports 1:1 square ratio, drag-to-pan, pinch/wheel zoom, center snap, and TFT mask previews.
- * Features High-Quality Sharp Canvas Resampling (Zero Blur).
+ * Features Fixed 240x240 Export with Motion Blending for Silky-Smooth Low-FPS Playback.
  */
 class VideoCropper {
   constructor(canvasElement, videoElement) {
@@ -29,6 +29,9 @@ class VideoCropper {
     // Touch gesture tracking
     this.initialPinchDistance = null;
     this.initialZoomOnPinch = 1.0;
+
+    // Motion blend cache
+    this.prevImageData = null;
 
     // Animation frame callback
     this.animFrameId = null;
@@ -266,10 +269,14 @@ class VideoCropper {
     ctx.restore();
   }
 
+  resetMotionBlend() {
+    this.prevImageData = null;
+  }
+
   /**
-   * Render frame directly onto target offscreen canvas with high-quality razor-sharp resampling
+   * Render frame directly onto 240x240 target canvas with optional Motion Blending for smooth low-FPS playback
    */
-  exportFrameToCanvas(targetCanvas) {
+  exportFrameToCanvas(targetCanvas, enableMotionBlend = true, blendFactor = 0.22) {
     const tw = targetCanvas.width;
     const th = targetCanvas.height;
     const tctx = targetCanvas.getContext('2d');
@@ -306,6 +313,27 @@ class VideoCropper {
     const drawY = (th - scaledH) / 2 + (this.panY * scaleRatio);
 
     tctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
+
+    // Apply Motion Blending for low FPS smooth motion effect
+    if (enableMotionBlend) {
+      const currImageData = tctx.getImageData(0, 0, tw, th);
+      const curr = currImageData.data;
+
+      if (this.prevImageData) {
+        const prev = this.prevImageData.data;
+        const bFactor = Math.min(0.35, Math.max(0.05, blendFactor));
+        const invFactor = 1 - bFactor;
+
+        for (let i = 0; i < curr.length; i += 4) {
+          curr[i] = Math.round(curr[i] * invFactor + prev[i] * bFactor);
+          curr[i + 1] = Math.round(curr[i + 1] * invFactor + prev[i + 1] * bFactor);
+          curr[i + 2] = Math.round(curr[i + 2] * invFactor + prev[i + 2] * bFactor);
+        }
+        tctx.putImageData(currImageData, 0, 0);
+      }
+
+      this.prevImageData = currImageData;
+    }
   }
 }
 

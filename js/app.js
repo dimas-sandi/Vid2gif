@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Features High-Definition Razor-Sharp GIF Generation with Floyd-Steinberg Dithering and Smart Target Enforcement.
+ * Features FIXED 240x240 Export, Dynamic FPS Auto-Tuning, and Smooth Motion Blending Engine.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -49,11 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const calcColors = document.getElementById('calc-colors');
   const calcEstSize = document.getElementById('calc-est-size');
   const calcMessage = document.getElementById('calc-message');
-
-  const chkManualOverride = document.getElementById('chk-manual-override');
-  const manualControls = document.getElementById('manual-controls');
-  const manualRes = document.getElementById('manual-res');
-  const manualColors = document.getElementById('manual-colors');
 
   const btnGenerateGif = document.getElementById('btn-generate-gif');
   const progressContainer = document.getElementById('progress-container');
@@ -194,52 +189,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  chkManualOverride.addEventListener('change', () => {
-    manualControls.classList.toggle('hidden', !chkManualOverride.checked);
-    runVideoCalculator();
-  });
-
-  manualRes.addEventListener('change', runVideoCalculator);
-  manualColors.addEventListener('change', runVideoCalculator);
-
   function runVideoCalculator() {
     const start = parseFloat(trimStartInput.value) || 0;
     const end = parseFloat(trimEndInput.value) || sourceVideo.duration || 3;
     const duration = Math.max(0.1, end - start);
-    const fps = parseInt(targetFpsSlider.value, 10);
+    const userFps = parseInt(targetFpsSlider.value, 10);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
-    const calc = TFTCalculator.calculate(duration, fps, targetKb);
+    const calc = TFTCalculator.calculate(duration, userFps, targetKb);
     currentVideoCalc = calc;
 
-    let exportRes = calc.recommendedRes;
-    let exportColors = calc.recommendedColors;
-
-    if (chkManualOverride.checked) {
-      exportRes = parseInt(manualRes.value, 10);
-      exportColors = parseInt(manualColors.value, 10);
-    }
-
-    calcRes.textContent = `${exportRes} x ${exportRes} px`;
-    calcTotalFrames.textContent = `${calc.totalFrames} Frames`;
-    calcColors.textContent = `${exportColors} Warna`;
+    calcRes.textContent = `240 x 240 px (FIX Native TFT)`;
+    calcTotalFrames.textContent = `${calc.fps} FPS (${calc.totalFrames} Frames)`;
+    calcColors.textContent = `${calc.recommendedColors} Warna`;
     calcEstSize.textContent = `~${calc.estimatedSizeKb} KB`;
     calcMessage.textContent = calc.statusMessage;
 
     calcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       calcStatusTag.classList.add('status-success');
-      calcStatusTag.textContent = 'Optimal (Tajam HD)';
+      calcStatusTag.textContent = '240x240 FIX';
     } else if (calc.status === 'warning') {
       calcStatusTag.classList.add('status-warning');
       calcStatusTag.textContent = 'Mendekati Batas';
     } else {
       calcStatusTag.classList.add('status-exceeded');
-      calcStatusTag.textContent = 'Smart Auto-Fit Siap';
+      calcStatusTag.textContent = 'FPS Adaptif Siap';
     }
   }
 
-  // --- SMART HIGH-DEFINITION MULTI-PASS GENERATOR ---
+  // --- SMART GENERATOR (FIX 240x240 RESOLUTION WITH MOTION BLENDING) ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -253,14 +232,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = Math.max(0.1, endT - startT);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
-    let exportRes = currentVideoCalc.recommendedRes;
+    const exportRes = 240; // STRICTLY FIXED TO 240
     let exportColors = currentVideoCalc.recommendedColors;
-    let currentFps = parseInt(targetFpsSlider.value, 10);
-
-    if (chkManualOverride.checked) {
-      exportRes = parseInt(manualRes.value, 10);
-      exportColors = parseInt(manualColors.value, 10);
-    }
+    let currentFps = currentVideoCalc.fps;
 
     let finalGifBuffer = null;
     let attempts = 0;
@@ -278,17 +252,21 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCtx.imageSmoothingEnabled = true;
       renderCtx.imageSmoothingQuality = 'high';
 
+      videoCropper.resetMotionBlend();
+
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / currentFps);
       encoder.setColorCount(exportColors);
-      encoder.setDither(true); // Floyd-Steinberg Dithering for sharp detail
+      encoder.setDither(true);
       encoder.start();
 
       for (let i = 0; i < totalFrames; i++) {
         const currentTime = startT + i * frameInterval;
         await seekVideoTo(sourceVideo, currentTime);
 
-        videoCropper.exportFrameToCanvas(renderCanvas);
+        // Apply Smooth Motion Blending for low-FPS renders so motion is smooth
+        const useMotionBlend = currentFps < 18;
+        videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.25);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
         encoder.addFrame(imgData.data, 10);
@@ -298,28 +276,27 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          progressStatusText.textContent = `Memproses frame HD ${i + 1} / ${totalFrames} (${exportRes}x${exportRes} px)...`;
+          progressStatusText.textContent = `Memproses frame 240x240 @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
         } else {
-          progressStatusText.textContent = `[Auto-Fit Pass ${attempts}] Menjaga ketajaman... Frame ${i + 1}/${totalFrames} (${exportRes}x${exportRes} px, ${exportColors} warna)...`;
+          progressStatusText.textContent = `[Adaptif Pass ${attempts}] Menyesuaikan FPS ke ${currentFps} FPS (${exportColors} warna)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      progressStatusText.textContent = 'Membuat stream file GIF HD...';
+      progressStatusText.textContent = 'Membuat stream file GIF 240x240...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalGifBuffer = encoder.finish();
       const generatedKb = Math.round(finalGifBuffer.length / 1024);
 
-      if (generatedKb <= targetKb || chkManualOverride.checked) {
+      if (generatedKb <= targetKb) {
         isWithinTarget = true;
       } else {
-        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi tajam ke tingkat lebih hemat...`;
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS & warna untuk menjaga 240x240 FIX...`;
         await new Promise((r) => setTimeout(r, 500));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, currentFps);
-        exportRes = nextConfig.res;
         exportColors = nextConfig.colors;
         currentFps = nextConfig.fps;
       }
@@ -335,13 +312,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalGifBuffer.length / 1024);
     resultSizeBadge.textContent = `${finalSizeKb} KB`;
     resFinalSize.textContent = `${finalSizeKb} KB (${finalGifBuffer.length.toLocaleString()} bytes)`;
-    resFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${currentFps} FPS (${exportColors} Warna)`;
+    resFinalResolution.textContent = `240 x 240 px (FIX Native TFT) @ ${currentFps} FPS (${exportColors} Warna)`;
 
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `✨ High-Definition Tajam (-${diff} KB dari target ${targetKb} KB)` 
-      : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
+      ? `🛡️ Strictly Guaranteed (-${diff} KB dari target ${targetKb} KB)` 
+      : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
     resultCard.classList.remove('hidden');
@@ -364,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleCArray.addEventListener('click', () => {
     if (!currentVideoGifBytes) return;
     carrayContainer.classList.toggle('hidden');
-    if (!carrayContainer.classList.contains('hidden')) generateCArrayCode(currentVideoGifBytes, carrayText, manualRes.value);
+    if (!carrayContainer.classList.contains('hidden')) generateCArrayCode(currentVideoGifBytes, carrayText, 240);
   });
 
   btnCopyCArray.addEventListener('click', () => copyToClipboard(carrayText, btnCopyCArray));
@@ -531,14 +508,14 @@ document.addEventListener('DOMContentLoaded', () => {
     decodedGifData.frames.forEach((f) => totalDurMs += (f.delay || 100));
     const durationSec = Math.max(0.2, totalDurMs / 1000);
 
-    const fps = parseInt(gifTargetFpsSlider.value, 10);
+    const userFps = parseInt(gifTargetFpsSlider.value, 10);
     const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
-    const calc = TFTCalculator.calculate(durationSec, fps, targetKb);
+    const calc = TFTCalculator.calculate(durationSec, userFps, targetKb);
     gifCurrentCalc = calc;
 
-    gifCalcRes.textContent = `${calc.recommendedRes} x ${calc.recommendedRes} px`;
-    gifCalcFrames.textContent = `${calc.totalFrames} Frames`;
+    gifCalcRes.textContent = `240 x 240 px (FIX Native TFT)`;
+    gifCalcFrames.textContent = `${calc.fps} FPS (${calc.totalFrames} Frames)`;
     gifCalcColors.textContent = `${calc.recommendedColors} Warna`;
     gifCalcEstSize.textContent = `~${calc.estimatedSizeKb} KB`;
     gifCalcMessage.textContent = calc.statusMessage;
@@ -546,13 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
     gifCalcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       gifCalcStatusTag.classList.add('status-success');
-      gifCalcStatusTag.textContent = 'Optimal (Tajam HD)';
+      gifCalcStatusTag.textContent = '240x240 FIX';
     } else if (calc.status === 'warning') {
       gifCalcStatusTag.classList.add('status-warning');
       gifCalcStatusTag.textContent = 'Mendekati Batas';
     } else {
       gifCalcStatusTag.classList.add('status-exceeded');
-      gifCalcStatusTag.textContent = 'Smart Auto-Fit Siap';
+      gifCalcStatusTag.textContent = 'FPS Adaptif Siap';
     }
   }
 
@@ -563,9 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
     gifProgressContainer.classList.remove('hidden');
     gifResultCard.classList.add('hidden');
 
-    let exportRes = gifCurrentCalc.recommendedRes;
+    const exportRes = 240; // STRICTLY FIXED TO 240
     let exportColors = gifCurrentCalc.recommendedColors;
-    let targetFps = parseInt(gifTargetFpsSlider.value, 10);
+    let targetFps = gifCurrentCalc.fps;
     const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
     let finalBuffer = null;
@@ -580,6 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const renderCtx = renderCanvas.getContext('2d');
       renderCtx.imageSmoothingEnabled = true;
       renderCtx.imageSmoothingQuality = 'high';
+
+      gifCropper.resetMotionBlend();
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / targetFps);
@@ -600,7 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const srcFrame = sourceFrames[sourceIdx];
         gifCropper.video = srcFrame.canvas;
 
-        gifCropper.exportFrameToCanvas(renderCanvas);
+        const useMotionBlend = targetFps < 18;
+        gifCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.25);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
         encoder.addFrame(imgData.data, 10);
@@ -610,15 +590,15 @@ document.addEventListener('DOMContentLoaded', () => {
         gifProgressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          gifProgressStatusText.textContent = `Memproses frame HD ${i + 1} / ${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+          gifProgressStatusText.textContent = `Memproses frame 240x240 @ ${targetFps} FPS (${i + 1}/${targetFrameCount})...`;
         } else {
-          gifProgressStatusText.textContent = `[Auto-Fit Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+          gifProgressStatusText.textContent = `[Adaptif Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${targetFps} FPS, ${exportColors} warna)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      gifProgressStatusText.textContent = 'Mengompresi file GIF HD...';
+      gifProgressStatusText.textContent = 'Mengompresi file GIF 240x240...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalBuffer = encoder.finish();
@@ -627,11 +607,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb) {
         isWithinTarget = true;
       } else {
-        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi tajam ke tingkat lebih hemat...`;
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS & warna...`;
         await new Promise((r) => setTimeout(r, 500));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, targetFps);
-        exportRes = nextConfig.res;
         exportColors = nextConfig.colors;
         targetFps = nextConfig.fps;
       }
@@ -647,13 +626,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalBuffer.length / 1024);
     gifResultSizeBadge.textContent = `${finalSizeKb} KB`;
     gifFinalSize.textContent = `${finalSizeKb} KB (${finalBuffer.length.toLocaleString()} bytes)`;
-    gifFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${targetFps} FPS (${exportColors} Warna)`;
+    gifFinalResolution.textContent = `240 x 240 px (FIX Native TFT) @ ${targetFps} FPS (${exportColors} Warna)`;
 
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `✨ High-Definition Tajam (-${diff} KB dari target ${targetKb} KB)` 
-      : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
+      ? `🛡️ Strictly Guaranteed (-${diff} KB dari target ${targetKb} KB)` 
+      : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
@@ -665,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleGifCArray.addEventListener('click', () => {
     if (!gifResizedBytes) return;
     gifCArrayContainer.classList.toggle('hidden');
-    if (!gifCArrayContainer.classList.contains('hidden')) generateCArrayCode(gifResizedBytes, gifCArrayText, gifCurrentCalc.recommendedRes);
+    if (!gifCArrayContainer.classList.contains('hidden')) generateCArrayCode(gifResizedBytes, gifCArrayText, 240);
   });
 
   btnCopyGifCArray.addEventListener('click', () => copyToClipboard(gifCArrayText, btnCopyGifCArray));
