@@ -293,8 +293,9 @@ class VideoCropper {
     const vh = this.video.videoHeight || this.video.height;
     if (!vw || !vh) return;
 
-    // SHARP: No smoothing = crisp pixels, no blur
-    tctx.imageSmoothingEnabled = false;
+    // Smooth anti-aliased downscaling without motion blur
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'medium';
     tctx.clearRect(0, 0, tw, th);
     tctx.fillStyle = '#000000';
     tctx.fillRect(0, 0, tw, th);

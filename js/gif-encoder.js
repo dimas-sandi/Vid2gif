@@ -189,9 +189,9 @@ class GIFEncoder {
     this.repeat = 0;
     this.colorCount = 256;
 
-    this.enableDelta = true;
-    this.deltaThreshold = 24;
-    this.transparentIndex = 255;
+    this.enableDelta = false;
+    this.deltaThreshold = 0;
+    this.transparentIndex = -1;
     this.prevFramePixels = null;
 
     this.globalNQ = null;
@@ -200,8 +200,8 @@ class GIFEncoder {
 
   setDelay(ms) { this.delay = Math.round(ms / 10); }
   setRepeat(r) { this.repeat = r; }
-  setColorCount(c) { this.colorCount = c; this.transparentIndex = Math.min(255, c - 1); }
-  setDeltaCompression(enabled, threshold = 24) {
+  setColorCount(c) { this.colorCount = c; }
+  setDeltaCompression(enabled, threshold = 0) {
     this.enableDelta = enabled;
     this.deltaThreshold = threshold;
   }
@@ -435,7 +435,7 @@ class AsyncGIFEncoder {
             const enc = new GIFEncoder(width, height);
             enc.setDelay(delayMs);
             enc.setColorCount(colors);
-            enc.setDeltaCompression(true, deltaThreshold);
+            enc.setDeltaCompression(false, 0);
 
             // Build global palette from sampled keyframes
             const step = Math.max(1, Math.floor(frames.length / 6));
