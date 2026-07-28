@@ -879,3 +879,62 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* ==========================================================================
+   Mobile Smartphone Responsiveness (@media max-width: 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .app-wrapper {
+    padding: 12px 10px;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .grid-two-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .cropper-container {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .navigation-tabs {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .preset-pills {
+    flex-wrap: wrap;
+  }
+
+  .preset-btn, .gif-preset-btn {
+    flex: 1 1 45%;
+    text-align: center;
+  }
+
+  .trim-inputs {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
