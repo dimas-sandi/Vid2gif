@@ -1,16 +1,12 @@
 /**
  * DMZ Eye Animator — GIF Encoder Engine
  * 
- * ROOT CAUSE FIX for 35% stuck:
- * The old lookupRGB() did a brute-force O(256) linear scan for EVERY pixel
- * of EVERY frame. For 45 frames × 57,600 pixels × 256 = 663 MILLION ops.
- * 
- * FIX: After NeuQuant training, we build a 32,768-entry (15-bit RGB) 
- * lookup cache table. Each pixel lookup is now O(1) instead of O(256).
- * This is 256× faster — encoding finishes in milliseconds, not minutes.
+ * HIGH QUALITY MODE: Exact brute-force nearest-color matching (no cache).
+ * Global palette (NeuQuant trains once) + Floyd-Steinberg dithering.
+ * Quality on par with ezgif.com.
  */
 
-// --- NeuQuant Color Quantizer (with O(1) Lookup Cache) ---
+// --- NeuQuant Color Quantizer ---
 class NeuQuant {
   constructor(pixels, samplefac, numColors = 256) {
     this.netsize = numColors;
@@ -43,18 +39,14 @@ class NeuQuant {
     this.freq = new Float64Array(this.netsize);
     this.radpower = new Float64Array(this.initrad);
 
-    const freqVal = 1.0 / this.netsize;
+    const f = 1.0 / this.netsize;
     for (let i = 0; i < this.netsize; i++) {
-      this.freq[i] = freqVal;
+      this.freq[i] = f;
       this.bias[i] = 0.0;
     }
-
-    // O(1) lookup cache — built after learn()+setUpArrays()
-    this.lookupCache = null;
   }
 
-  // Read palette directly from network (already sorted by setUpArrays).
-  // DO NOT re-sort here — indices must match buildLookupCache()!
+  // Output palette — reads directly from sorted network (indices match lookupRGB)
   colorMap() {
     const map = new Uint8Array(this.netsize * 3);
     let k = 0;
@@ -67,7 +59,7 @@ class NeuQuant {
   }
 
   setUpArrays() {
-    // Sort network by green for indexed lookup
+    // Selection sort network by green channel
     for (let i = 0; i < this.netsize; i++) {
       let smallpos = i;
       let smallval = this.network[i][1];
@@ -78,10 +70,10 @@ class NeuQuant {
         }
       }
       if (i !== smallpos) {
-        let temp;
-        temp = this.network[i][0]; this.network[i][0] = this.network[smallpos][0]; this.network[smallpos][0] = temp;
-        temp = this.network[i][1]; this.network[i][1] = this.network[smallpos][1]; this.network[smallpos][1] = temp;
-        temp = this.network[i][2]; this.network[i][2] = this.network[smallpos][2]; this.network[smallpos][2] = temp;
+        let t;
+        t = this.network[i][0]; this.network[i][0] = this.network[smallpos][0]; this.network[smallpos][0] = t;
+        t = this.network[i][1]; this.network[i][1] = this.network[smallpos][1]; this.network[smallpos][1] = t;
+        t = this.network[i][2]; this.network[i][2] = this.network[smallpos][2]; this.network[smallpos][2] = t;
       }
     }
   }
@@ -89,11 +81,9 @@ class NeuQuant {
   alterneigh(rad, i, r, g, b) {
     const lo = Math.max(i - rad, -1);
     const hi = Math.min(i + rad, this.netsize);
-    let j = i + 1;
-    let k = i - 1;
-    let m = 1;
+    let j = i + 1, k = i - 1, m = 1;
     while (j < hi || k > lo) {
-      const a = Math.round(this.radpower[m++]);
+      const a = this.radpower[m++];
       if (j < hi) {
         const p = this.network[j++];
         p[0] -= (a * (p[0] - r)) / this.alpharadbias;
@@ -117,42 +107,37 @@ class NeuQuant {
   }
 
   contest(r, g, b) {
-    let bestd = 1.0e30;
-    let bestbiasd = bestd;
-    let bestpos = -1;
-    let bestbiaspos = bestpos;
-
+    let bestd = 1e30, bestbiasd = 1e30, bestpos = -1, bestbiaspos = -1;
     for (let i = 0; i < this.netsize; i++) {
       const p = this.network[i];
       const dist = Math.abs(p[0] - r) + Math.abs(p[1] - g) + Math.abs(p[2] - b);
       if (dist < bestd) { bestd = dist; bestpos = i; }
-      const biasdist = dist - (this.bias[i] / (1 << (this.alphabiasshift - this.radbiasshift)));
+      const biasdist = dist - (this.bias[i] >> (this.alphabiasshift - this.radbiasshift));
       if (biasdist < bestbiasd) { bestbiasd = biasdist; bestbiaspos = i; }
-      const beta = this.freq[i] / (1 << this.radbiasshift);
+      const beta = this.freq[i] >> this.radbiasshift;
       this.freq[i] -= beta;
-      this.bias[i] += beta * (1 << this.alphabiasshift);
+      this.bias[i] += beta << this.alphabiasshift;
     }
-    this.freq[bestpos] += 1.0 / (1 << this.radbiasshift);
-    this.bias[bestpos] -= 1.0 / (1 << (this.alphabiasshift - this.radbiasshift));
+    this.freq[bestpos] += 1 << (this.alphabiasshift - this.radbiasshift);
+    this.bias[bestpos] -= 1 << this.alphabiasshift;
     return bestbiaspos;
   }
 
   learn() {
-    const lengthcount = this.pixels.length;
-    const samplefac = this.samplefac;
-    const alphadec = 30 + (samplefac - 1) / 3;
-    const samplepixels = lengthcount / (4 * samplefac);
-    let delta = Math.max(1, Math.floor(samplepixels / this.ncycles));
+    const len = this.pixels.length;
+    const alphadec = 30 + (this.samplefac - 1) / 3;
+    const samplepixels = Math.floor(len / (4 * this.samplefac));
+    const delta = Math.max(1, Math.floor(samplepixels / this.ncycles));
     let alpha = this.alphabias;
     let radius = this.initbiasradius;
-
     let rad = radius >> this.radiusbiasshift;
     if (rad <= 1) rad = 0;
+
     for (let i = 0; i < rad; i++) {
       this.radpower[i] = alpha * (((rad * rad - i * i) * this.radbias) / (rad * rad));
     }
 
-    const step = 4 * samplefac;
+    const step = 4 * this.samplefac;
     let pix = 0;
 
     for (let i = 0; i < samplepixels; i++) {
@@ -165,7 +150,7 @@ class NeuQuant {
       if (rad !== 0) this.alterneigh(rad, j, r, g, b);
 
       pix += step;
-      if (pix >= lengthcount) pix = 0;
+      if (pix >= len) pix = 0;
 
       if (i % delta === 0) {
         alpha -= alpha / alphadec;
@@ -179,47 +164,13 @@ class NeuQuant {
     }
   }
 
-  // Build O(1) lookup cache: 15-bit RGB → palette index (32,768 entries)
-  buildLookupCache() {
-    this.lookupCache = new Uint8Array(32768);
-    for (let r5 = 0; r5 < 32; r5++) {
-      const r = (r5 << 3) | 4; // center of bin
-      for (let g5 = 0; g5 < 32; g5++) {
-        const g = (g5 << 3) | 4;
-        for (let b5 = 0; b5 < 32; b5++) {
-          const b = (b5 << 3) | 4;
-          const key = (r5 << 10) | (g5 << 5) | b5;
-          // Brute-force search (done once during setup, not per-pixel)
-          let bestd = 1e9;
-          let best = 0;
-          for (let i = 0; i < this.netsize; i++) {
-            const p = this.network[i];
-            const dr = p[0] - r;
-            const dg = p[1] - g;
-            const db = p[2] - b;
-            const d = dr * dr + dg * dg + db * db;
-            if (d < bestd) { bestd = d; best = i; }
-          }
-          this.lookupCache[key] = best;
-        }
-      }
-    }
-  }
-
-  // O(1) cached lookup — 256× faster than brute-force per pixel
+  // Exact nearest-color lookup — O(256) but precise (no cache error)
   lookupRGB(r, g, b) {
-    if (this.lookupCache) {
-      const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
-      return this.lookupCache[key];
-    }
-    // Fallback brute-force (should never be reached after buildLookupCache)
-    let bestd = 1e9;
-    let best = 0;
+    let bestd = 1e9, best = 0;
     for (let i = 0; i < this.netsize; i++) {
-      const p = this.network[i];
-      const dr = p[0] - r;
-      const dg = p[1] - g;
-      const db = p[2] - b;
+      const dr = this.network[i][0] - r;
+      const dg = this.network[i][1] - g;
+      const db = this.network[i][2] - b;
       const d = dr * dr + dg * dg + db * db;
       if (d < bestd) { bestd = d; best = i; }
     }
@@ -233,11 +184,10 @@ class GIFEncoder {
     this.width = Math.floor(width);
     this.height = Math.floor(height);
     this.out = [];
-    this.frames = [];
+    this.frameCount = 0;
     this.delay = 10;
     this.repeat = 0;
     this.colorCount = 256;
-    this.useDither = true; // Floyd-Steinberg dithering — safe with O(1) cache
 
     this.enableDelta = true;
     this.deltaThreshold = 24;
@@ -250,230 +200,170 @@ class GIFEncoder {
 
   setDelay(ms) { this.delay = Math.round(ms / 10); }
   setRepeat(r) { this.repeat = r; }
-  setColorCount(count) {
-    this.colorCount = count;
-    this.transparentIndex = Math.min(255, count - 1);
-  }
-  setDither(enabled) { this.useDither = enabled; }
+  setColorCount(c) { this.colorCount = c; this.transparentIndex = Math.min(255, c - 1); }
   setDeltaCompression(enabled, threshold = 24) {
     this.enableDelta = enabled;
     this.deltaThreshold = threshold;
   }
 
-  setGlobalPaletteFromSample(sampledPixels) {
-    // Lower sampleFac = better palette quality (more pixels sampled for training)
-    const sampleFac = Math.max(10, Math.floor(sampledPixels.length / 60000));
+  buildGlobalPalette(sampledPixels) {
+    // sampleFac=1 → trains on every pixel = best palette quality
+    // For large buffers, scale up slightly to stay fast
+    const sampleFac = Math.max(1, Math.floor(sampledPixels.length / 200000));
     this.globalNQ = new NeuQuant(sampledPixels, sampleFac, this.colorCount);
     this.globalNQ.learn();
     this.globalNQ.setUpArrays();
-    this.globalNQ.buildLookupCache(); // BUILD O(1) CACHE — this is the key fix
     this.globalColorMap = this.globalNQ.colorMap();
   }
 
   start() {
     this.out = [];
+    this.frameCount = 0;
     this.prevFramePixels = null;
-    this.writeString("GIF89a");
-    this.writeLSD(this.globalColorMap != null);
-    if (this.globalColorMap) this.writeColorTable(this.globalColorMap);
-  }
-
-  writeString(str) {
-    for (let i = 0; i < str.length; i++) this.out.push(str.charCodeAt(i));
-  }
-
-  writeShort(val) {
-    this.out.push(val & 0xff);
-    this.out.push((val >> 8) & 0xff);
-  }
-
-  writeLSD(hasGCT = false) {
-    this.writeShort(this.width);
-    this.writeShort(this.height);
-    if (hasGCT) {
-      let bits = Math.ceil(Math.log2(this.colorCount)) - 1;
-      if (bits < 0) bits = 0;
-      this.out.push(0x80 | 0x70 | bits);
-    } else {
-      this.out.push(0x70);
-    }
-    this.out.push(0);
-    this.out.push(0);
-  }
-
-  writeNetscapeAppExt() {
-    this.out.push(0x21, 0xff, 11);
-    this.writeString("NETSCAPE2.0");
-    this.out.push(3, 1);
-    this.writeShort(this.repeat);
-    this.out.push(0);
+    this._writeStr("GIF89a");
+    this._writeLSD();
+    if (this.globalColorMap) this._writeColorTable(this.globalColorMap);
   }
 
   addFrame(pixels) {
     const nq = this.globalNQ;
-    const colorMap = this.globalColorMap;
-    if (!nq || !colorMap) return;
+    const cmap = this.globalColorMap;
+    if (!nq || !cmap) return;
 
-    const w = this.width;
-    const h = this.height;
-    const totalPixels = w * h;
-    const indexedPixels = new Uint8Array(totalPixels);
-    let hasTransparent = false;
-    const isFirst = (this.frames.length === 0);
+    const w = this.width, h = this.height;
+    const total = w * h;
+    const indexed = new Uint8Array(total);
+    let hasTransp = false;
+    const isFirst = (this.frameCount === 0);
 
-    if (this.useDither) {
-      // Floyd-Steinberg dithering with O(1) lookup — high quality + fast
-      const errW = w + 2;
-      const rErr = new Float32Array(errW * (h + 1));
-      const gErr = new Float32Array(errW * (h + 1));
-      const bErr = new Float32Array(errW * (h + 1));
+    // Floyd-Steinberg dithering with EXACT nearest-color (no cache)
+    const ew = w + 2;
+    const rE = new Float32Array(ew * (h + 1));
+    const gE = new Float32Array(ew * (h + 1));
+    const bE = new Float32Array(ew * (h + 1));
 
-      let k = 0;
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const pi = (y * w + x) * 4;
-          const ei = y * errW + x + 1;
+    let k = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const pi = (y * w + x) * 4;
+        const ei = y * ew + x + 1;
 
-          let r = pixels[pi] + rErr[ei];
-          let g = pixels[pi + 1] + gErr[ei];
-          let b = pixels[pi + 2] + bErr[ei];
-          r = Math.max(0, Math.min(255, r));
-          g = Math.max(0, Math.min(255, g));
-          b = Math.max(0, Math.min(255, b));
+        let r = pixels[pi] + rE[ei];
+        let g = pixels[pi + 1] + gE[ei];
+        let b = pixels[pi + 2] + bE[ei];
+        r = r < 0 ? 0 : r > 255 ? 255 : r;
+        g = g < 0 ? 0 : g > 255 ? 255 : g;
+        b = b < 0 ? 0 : b > 255 ? 255 : b;
 
-          // Delta compression
-          if (!isFirst && this.enableDelta && this.prevFramePixels) {
-            const diff = Math.abs(r - this.prevFramePixels[pi])
-                       + Math.abs(g - this.prevFramePixels[pi + 1])
-                       + Math.abs(b - this.prevFramePixels[pi + 2]);
-            if (diff < this.deltaThreshold) {
-              indexedPixels[k++] = this.transparentIndex;
-              hasTransparent = true;
-              continue;
-            }
-          }
-
-          // O(1) color lookup
-          const idx = nq.lookupRGB(r | 0, g | 0, b | 0);
-          indexedPixels[k++] = idx;
-
-          // Compute and diffuse error
-          const er = r - colorMap[idx * 3];
-          const eg = g - colorMap[idx * 3 + 1];
-          const eb = b - colorMap[idx * 3 + 2];
-
-          // Right neighbor
-          rErr[ei + 1]       += er * 0.4375; // 7/16
-          gErr[ei + 1]       += eg * 0.4375;
-          bErr[ei + 1]       += eb * 0.4375;
-          // Bottom-left
-          rErr[ei + errW - 1] += er * 0.1875; // 3/16
-          gErr[ei + errW - 1] += eg * 0.1875;
-          bErr[ei + errW - 1] += eb * 0.1875;
-          // Bottom
-          rErr[ei + errW]     += er * 0.3125; // 5/16
-          gErr[ei + errW]     += eg * 0.3125;
-          bErr[ei + errW]     += eb * 0.3125;
-          // Bottom-right
-          rErr[ei + errW + 1] += er * 0.0625; // 1/16
-          gErr[ei + errW + 1] += eg * 0.0625;
-          bErr[ei + errW + 1] += eb * 0.0625;
-        }
-      }
-    } else {
-      // No-dither fast path
-      let k = 0;
-      for (let i = 0; i < totalPixels; i++) {
-        const pi = i * 4;
-        const r = pixels[pi];
-        const g = pixels[pi + 1];
-        const b = pixels[pi + 2];
-
+        // Delta compression
         if (!isFirst && this.enableDelta && this.prevFramePixels) {
           const diff = Math.abs(r - this.prevFramePixels[pi])
                      + Math.abs(g - this.prevFramePixels[pi + 1])
                      + Math.abs(b - this.prevFramePixels[pi + 2]);
           if (diff < this.deltaThreshold) {
-            indexedPixels[k++] = this.transparentIndex;
-            hasTransparent = true;
+            indexed[k++] = this.transparentIndex;
+            hasTransp = true;
             continue;
           }
         }
 
-        indexedPixels[k++] = nq.lookupRGB(r, g, b);
+        // EXACT nearest color — full precision, no cache artifacts
+        const idx = nq.lookupRGB(r | 0, g | 0, b | 0);
+        indexed[k++] = idx;
+
+        // Error diffusion (Floyd-Steinberg)
+        const er = r - cmap[idx * 3];
+        const eg = g - cmap[idx * 3 + 1];
+        const eb = b - cmap[idx * 3 + 2];
+
+        rE[ei + 1]       += er * 0.4375;
+        gE[ei + 1]       += eg * 0.4375;
+        bE[ei + 1]       += eb * 0.4375;
+
+        rE[ei + ew - 1]  += er * 0.1875;
+        gE[ei + ew - 1]  += eg * 0.1875;
+        bE[ei + ew - 1]  += eb * 0.1875;
+
+        rE[ei + ew]      += er * 0.3125;
+        gE[ei + ew]      += eg * 0.3125;
+        bE[ei + ew]      += eb * 0.3125;
+
+        rE[ei + ew + 1]  += er * 0.0625;
+        gE[ei + ew + 1]  += eg * 0.0625;
+        bE[ei + ew + 1]  += eb * 0.0625;
       }
     }
 
     this.prevFramePixels = new Uint8ClampedArray(pixels);
 
-    if (this.frames.length === 0 && this.repeat >= 0) this.writeNetscapeAppExt();
+    if (this.frameCount === 0 && this.repeat >= 0) this._writeNetscape();
 
-    this.writeGraphicCtrlExt(hasTransparent);
-    this.writeImageDesc(true);
-    this.writePixels(indexedPixels);
-    this.frames.push(true);
-  }
-
-  writeGraphicCtrlExt(hasTransparency = false) {
-    this.out.push(0x21, 0xf9, 4);
-    this.out.push(hasTransparency ? 0x05 : 0x04);
-    this.writeShort(this.delay);
-    this.out.push(hasTransparency ? this.transparentIndex : 0);
-    this.out.push(0);
-  }
-
-  writeImageDesc(hasGCT = false) {
-    this.out.push(0x2c);
-    this.writeShort(0);
-    this.writeShort(0);
-    this.writeShort(this.width);
-    this.writeShort(this.height);
-    this.out.push(hasGCT ? 0 : 0x80);
-  }
-
-  writeColorTable(colorMap) {
-    for (let i = 0; i < colorMap.length; i++) this.out.push(colorMap[i]);
-    const target = (1 << Math.ceil(Math.log2(this.colorCount))) * 3;
-    for (let i = colorMap.length; i < target; i++) this.out.push(0);
-  }
-
-  writePixels(indexedPixels) {
-    const initCodeSize = Math.max(2, Math.ceil(Math.log2(this.colorCount)));
-    this.out.push(initCodeSize);
-    const lzw = new LZWEncoder(this.width, this.height, indexedPixels, initCodeSize);
-    const compressed = lzw.encode();
-    for (let i = 0; i < compressed.length; i++) this.out.push(compressed[i]);
-    this.out.push(0);
+    this._writeGCE(hasTransp);
+    this._writeImageDesc();
+    this._writeLZW(indexed);
+    this.frameCount++;
   }
 
   finish() {
     this.out.push(0x3b);
     return new Uint8Array(this.out);
   }
-}
 
-// --- LZW Encoder ---
-class LZWEncoder {
-  constructor(width, height, pixels, colorDepth) {
-    this.pixels = pixels;
-    this.initCodeSize = colorDepth;
+  // --- Internal GIF structure writers ---
+  _writeStr(s) { for (let i = 0; i < s.length; i++) this.out.push(s.charCodeAt(i)); }
+  _writeShort(v) { this.out.push(v & 0xff, (v >> 8) & 0xff); }
+
+  _writeLSD() {
+    this._writeShort(this.width);
+    this._writeShort(this.height);
+    const bits = Math.ceil(Math.log2(this.colorCount)) - 1;
+    this.out.push(this.globalColorMap ? (0x80 | 0x70 | Math.max(0, bits)) : 0x70);
+    this.out.push(0, 0);
   }
 
-  encode() {
-    const initCodeSize = this.initCodeSize;
-    const clearCode = 1 << initCodeSize;
+  _writeColorTable(map) {
+    for (let i = 0; i < map.length; i++) this.out.push(map[i]);
+    const target = (1 << Math.ceil(Math.log2(this.colorCount))) * 3;
+    for (let i = map.length; i < target; i++) this.out.push(0);
+  }
+
+  _writeNetscape() {
+    this.out.push(0x21, 0xff, 11);
+    this._writeStr("NETSCAPE2.0");
+    this.out.push(3, 1);
+    this._writeShort(this.repeat);
+    this.out.push(0);
+  }
+
+  _writeGCE(hasTransp) {
+    this.out.push(0x21, 0xf9, 4);
+    this.out.push(hasTransp ? 0x05 : 0x04);
+    this._writeShort(this.delay);
+    this.out.push(hasTransp ? this.transparentIndex : 0);
+    this.out.push(0);
+  }
+
+  _writeImageDesc() {
+    this.out.push(0x2c);
+    this._writeShort(0); this._writeShort(0);
+    this._writeShort(this.width); this._writeShort(this.height);
+    this.out.push(0); // no local color table
+  }
+
+  _writeLZW(indexed) {
+    const minCode = Math.max(2, Math.ceil(Math.log2(this.colorCount)));
+    this.out.push(minCode);
+
+    const clearCode = 1 << minCode;
     const eofCode = clearCode + 1;
-
-    let codeSize = initCodeSize + 1;
+    let codeSize = minCode + 1;
     let nextCode = eofCode + 1;
-    const maxMaxCode = 4096;
 
-    let curBitAccum = 0;
-    let curBits = 0;
+    let bits = 0, buf = 0;
     const output = [];
     const packet = [];
 
-    const sendByte = (b) => {
+    const emit = (b) => {
       packet.push(b);
       if (packet.length === 255) {
         output.push(255);
@@ -482,18 +372,14 @@ class LZWEncoder {
       }
     };
 
-    const sendBits = (code, bits) => {
-      curBitAccum |= (code << curBits);
-      curBits += bits;
-      while (curBits >= 8) {
-        sendByte(curBitAccum & 0xff);
-        curBitAccum >>= 8;
-        curBits -= 8;
-      }
+    const send = (code, sz) => {
+      buf |= (code << bits);
+      bits += sz;
+      while (bits >= 8) { emit(buf & 0xff); buf >>= 8; bits -= 8; }
     };
 
     const flush = () => {
-      if (curBits > 0) sendByte(curBitAccum & 0xff);
+      if (bits > 0) emit(buf & 0xff);
       if (packet.length > 0) {
         output.push(packet.length);
         for (let i = 0; i < packet.length; i++) output.push(packet[i]);
@@ -501,119 +387,99 @@ class LZWEncoder {
       }
     };
 
-    const dictionary = new Map();
-    const resetDict = () => {
-      dictionary.clear();
-      codeSize = initCodeSize + 1;
-      nextCode = eofCode + 1;
-    };
+    const dict = new Map();
+    const resetDict = () => { dict.clear(); codeSize = minCode + 1; nextCode = eofCode + 1; };
 
-    sendBits(clearCode, codeSize);
-    let prefix = this.pixels[0];
+    send(clearCode, codeSize);
+    let prefix = indexed[0];
 
-    for (let i = 1; i < this.pixels.length; i++) {
-      const k = this.pixels[i];
+    for (let i = 1; i < indexed.length; i++) {
+      const k = indexed[i];
       const key = (prefix << 16) | k;
-
-      if (dictionary.has(key)) {
-        prefix = dictionary.get(key);
+      if (dict.has(key)) {
+        prefix = dict.get(key);
       } else {
-        sendBits(prefix, codeSize);
-        if (nextCode < maxMaxCode) {
-          dictionary.set(key, nextCode++);
+        send(prefix, codeSize);
+        if (nextCode < 4096) {
+          dict.set(key, nextCode++);
           if (nextCode === (1 << codeSize) + 1 && codeSize < 12) codeSize++;
         } else {
-          sendBits(clearCode, codeSize);
+          send(clearCode, codeSize);
           resetDict();
         }
         prefix = k;
       }
     }
 
-    sendBits(prefix, codeSize);
-    sendBits(eofCode, codeSize);
+    send(prefix, codeSize);
+    send(eofCode, codeSize);
     flush();
-    return output;
+
+    for (let i = 0; i < output.length; i++) this.out.push(output[i]);
+    this.out.push(0);
   }
 }
 
-// --- Web Worker Async Encoder ---
+// --- Web Worker Encoder ---
 class AsyncGIFEncoder {
-  static encodeInWorker(framesPixelData, width, height, delayMs, colors = 256, deltaThreshold = 24, onProgress = null) {
+  static encodeInWorker(framesPixelData, width, height, delayMs, colors, deltaThreshold, onProgress) {
     return new Promise((resolve, reject) => {
-      const workerCode = `
+      const src = `
         ${NeuQuant.toString()}
-        ${LZWEncoder.toString()}
         ${GIFEncoder.toString()}
 
         self.onmessage = function(e) {
           try {
             const { frames, width, height, delayMs, colors, deltaThreshold } = e.data;
-            const encoder = new GIFEncoder(width, height);
-            encoder.setDelay(delayMs);
-            encoder.setColorCount(colors);
-            encoder.setDither(false);
-            encoder.setDeltaCompression(true, deltaThreshold);
 
-            // Sample keyframes for global palette
-            const sampleStep = Math.max(1, Math.floor(frames.length / 6));
-            let totalLen = 0;
-            for (let i = 0; i < frames.length; i += sampleStep) totalLen += frames[i].length;
-            const sampled = new Uint8Array(totalLen);
+            const enc = new GIFEncoder(width, height);
+            enc.setDelay(delayMs);
+            enc.setColorCount(colors);
+            enc.setDeltaCompression(true, deltaThreshold);
+
+            // Build global palette from sampled keyframes
+            const step = Math.max(1, Math.floor(frames.length / 6));
+            let len = 0;
+            for (let i = 0; i < frames.length; i += step) len += frames[i].length;
+            const sampled = new Uint8Array(len);
             let off = 0;
-            for (let i = 0; i < frames.length; i += sampleStep) {
+            for (let i = 0; i < frames.length; i += step) {
               sampled.set(frames[i], off);
               off += frames[i].length;
             }
 
             self.postMessage({ type: 'progress', percent: 5 });
+            enc.buildGlobalPalette(sampled);
+            self.postMessage({ type: 'progress', percent: 10 });
 
-            encoder.setGlobalPaletteFromSample(sampled);
-
-            self.postMessage({ type: 'progress', percent: 15 });
-
-            encoder.start();
+            enc.start();
 
             for (let i = 0; i < frames.length; i++) {
-              encoder.addFrame(frames[i]);
-              const pct = 15 + Math.round(((i + 1) / frames.length) * 85);
-              self.postMessage({ type: 'progress', percent: pct });
+              enc.addFrame(frames[i]);
+              self.postMessage({ type: 'progress', percent: 10 + Math.round(((i + 1) / frames.length) * 90) });
             }
 
-            const buffer = encoder.finish();
-            self.postMessage({ type: 'complete', buffer: buffer }, [buffer.buffer]);
+            const buf = enc.finish();
+            self.postMessage({ type: 'done', buffer: buf }, [buf.buffer]);
           } catch(err) {
-            self.postMessage({ type: 'error', error: err.message + ' | ' + err.stack });
+            self.postMessage({ type: 'error', error: err.message });
           }
         };
       `;
 
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const blob = new Blob([src], { type: 'application/javascript' });
       const worker = new Worker(URL.createObjectURL(blob));
 
       worker.onmessage = (e) => {
-        const msg = e.data;
-        if (msg.type === 'progress') {
-          if (onProgress) onProgress(msg.percent);
-        } else if (msg.type === 'complete') {
-          worker.terminate();
-          resolve(msg.buffer);
-        } else if (msg.type === 'error') {
-          worker.terminate();
-          reject(new Error(msg.error));
-        }
+        if (e.data.type === 'progress') { if (onProgress) onProgress(e.data.percent); }
+        else if (e.data.type === 'done') { worker.terminate(); resolve(e.data.buffer); }
+        else if (e.data.type === 'error') { worker.terminate(); reject(new Error(e.data.error)); }
       };
+      worker.onerror = (err) => { worker.terminate(); reject(new Error(err.message)); };
 
-      worker.onerror = (err) => {
-        worker.terminate();
-        reject(new Error(err.message || 'Worker error'));
-      };
-
-      const transferables = framesPixelData.map((f) => f.buffer);
       worker.postMessage({
-        frames: framesPixelData,
-        width, height, delayMs, colors, deltaThreshold
-      }, transferables);
+        frames: framesPixelData, width, height, delayMs, colors, deltaThreshold
+      }, framesPixelData.map(f => f.buffer));
     });
   }
 }
