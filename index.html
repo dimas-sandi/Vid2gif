@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vid2GIF - Konverter GIF TFT 1.28" (240x240 Fix)</title>
-  <meta name="description" content="Konverter video ke GIF statis khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan WhatsApp-style crop, target size calculator, dan Motion Blending FPS.">
+  <title>Vid2GIF - Konverter GIF TFT 1.28" (240x240 HD)</title>
+  <meta name="description" content="Konverter video ke GIF statis HD khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan WhatsApp-style crop, target size calculator, dan 256-color HD quantization.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,9 @@
   
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Gifshot HD GIF Library CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
   
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="style.css">
@@ -27,8 +30,8 @@
           <i class="fa-solid fa-microchip"></i>
         </div>
         <div>
-          <h1>Vid2GIF <span class="tft-tag">240x240 FIX</span></h1>
-          <p class="subtitle">Konverter & Resizer GIF Statis untuk Display Smartwatch 1.28" (FPS Otomatis & Smooth)</p>
+          <h1>Vid2GIF <span class="tft-tag">240x240 HD</span></h1>
+          <p class="subtitle">Konverter & Resizer GIF Photorealistic 256-Warna untuk Display Smartwatch 1.28"</p>
         </div>
       </div>
       <div class="header-actions">
@@ -41,7 +44,7 @@
     <!-- Top Navigation Tabs -->
     <nav class="navigation-tabs">
       <button type="button" class="tab-btn active" data-tab="tab-video">
-        <i class="fa-solid fa-file-video"></i> Video ke GIF TFT 240x240
+        <i class="fa-solid fa-file-video"></i> Video ke GIF TFT 240x240 HD
       </button>
       <button type="button" class="tab-btn" data-tab="tab-gif-resize">
         <i class="fa-solid fa-file-image"></i> GIF Resizer 240x240 (Target Size)
@@ -65,7 +68,7 @@
                   <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
                 <h3>Pilih Video atau Seret File ke Sini</h3>
-                <p>Mendukung format MP4, WebM, MOV (Export FIX 240x240 Native TFT 1.28")</p>
+                <p>Mendukung format MP4, WebM, MOV (Photorealistic 256-Color Palette & Sharp Details)</p>
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('video-input').click()">
                   <i class="fa-solid fa-file-video"></i> Buka File Video
                 </button>
@@ -76,7 +79,7 @@
             <div id="workspace" class="workspace hidden">
               
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> 1. WhatsApp-Style 1:1 Crop (240x240 FIX)</h3>
+                <h3><i class="fa-solid fa-crop"></i> 1. WhatsApp-Style 1:1 Crop (240x240 HD)</h3>
                 <div class="mask-toggle-group">
                   <button type="button" id="btn-mask-round" class="btn-toggle active" title="Bentuk Layar GC9A01 Bulat">
                     <i class="fa-regular fa-circle"></i> Bulat 1.28"
@@ -153,7 +156,7 @@
             
             <div class="card settings-card">
               <div class="card-header">
-                <h3><i class="fa-solid fa-sliders"></i> 2. Target KB & Auto FPS Engine</h3>
+                <h3><i class="fa-solid fa-sliders"></i> 2. Target Size & Auto FPS Engine</h3>
               </div>
               
               <div class="card-body">
@@ -161,7 +164,7 @@
                 <div class="form-group">
                   <div class="label-with-tooltip">
                     <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
-                    <span class="tooltip-info" title="Batas maksimal ukuran file GIF (FPS terkalkulasi otomatis agar muat)">?</span>
+                    <span class="tooltip-info" title="Ukuran maksimal file GIF (Palet 256 warna tetap terjaga, FPS disesuaikan otomatis)">?</span>
                   </div>
                   
                   <div class="input-with-unit">
@@ -193,14 +196,14 @@
                 <!-- Auto-Calculator Summary Card -->
                 <div id="calc-summary" class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Otomatis Sistem</h4>
-                    <span id="calc-status-tag" class="status-badge status-success">240x240 FIX</span>
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240 HD</h4>
+                    <span id="calc-status-tag" class="status-badge status-success">256 Warna HD</span>
                   </div>
 
                   <div class="calc-grid">
                     <div class="calc-item">
                       <span class="calc-label">Resolusi Export</span>
-                      <span id="calc-res" class="calc-value mono-highlight">240 x 240 px (FIX)</span>
+                      <span id="calc-res" class="calc-value mono-highlight">240 x 240 px (FIX HD)</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Auto FPS</span>
@@ -208,7 +211,7 @@
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Palet Warna</span>
-                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna</span>
+                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna Full HD</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Estimasi Size</span>
@@ -216,15 +219,15 @@
                     </div>
                   </div>
 
-                  <p id="calc-message" class="calc-message">Resolusi FIX 240x240 px. FPS terkalkulasi otomatis agar tidak melebihi target.</p>
+                  <p id="calc-message" class="calc-message">Warna kulit & pencahayaan tetap 256 warna tajam. FPS disesuaikan agar muat di bawah target.</p>
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-sparkles"></i> <strong>Smooth Motion Blending Aktif</strong>: FPS rendah tetap terlihat mulus & tidak patah!
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Photorealistic 256-Color + Smooth Motion</strong>
                 </div>
 
                 <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
-                  <i class="fa-solid fa-bolt"></i> Generate GIF 240x240 (Target KB)
+                  <i class="fa-solid fa-bolt"></i> Generate GIF 240x240 HD (Target KB)
                 </button>
 
                 <div id="progress-container" class="progress-container hidden">
@@ -267,7 +270,7 @@
                   </div>
                   <div class="detail-row">
                     <span>Resolusi & FPS:</span>
-                    <strong id="res-final-resolution">240 x 240 px (FIX)</strong>
+                    <strong id="res-final-resolution">240 x 240 px (FIX HD)</strong>
                   </div>
                   <div class="detail-row">
                     <span>Status Target:</span>
@@ -326,7 +329,7 @@
             <div id="gif-workspace" class="workspace hidden">
               
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> WhatsApp-Style GIF Crop (240x240 FIX)</h3>
+                <h3><i class="fa-solid fa-crop"></i> WhatsApp-Style GIF Crop (240x240 HD)</h3>
                 <div class="mask-toggle-group">
                   <button type="button" id="gif-btn-mask-round" class="btn-toggle active">
                     <i class="fa-regular fa-circle"></i> Bulat 1.28"
@@ -430,14 +433,14 @@
                 <!-- GIF Auto-Calc Summary -->
                 <div id="gif-calc-summary" class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240</h4>
-                    <span id="gif-calc-status-tag" class="status-badge status-success">240x240 FIX</span>
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240 HD</h4>
+                    <span id="gif-calc-status-tag" class="status-badge status-success">256 Warna HD</span>
                   </div>
 
                   <div class="calc-grid">
                     <div class="calc-item">
                       <span class="calc-label">Resolusi Export</span>
-                      <span id="gif-calc-res" class="calc-value mono-highlight">240 x 240 px (FIX)</span>
+                      <span id="gif-calc-res" class="calc-value mono-highlight">240 x 240 px (FIX HD)</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Auto FPS</span>
@@ -445,7 +448,7 @@
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Warna Palet</span>
-                      <span id="gif-calc-colors" class="calc-value mono-highlight">128 Warna</span>
+                      <span id="gif-calc-colors" class="calc-value mono-highlight">256 Warna HD</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Estimasi Size</span>
@@ -457,11 +460,11 @@
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-sparkles"></i> <strong>Smooth Motion Blending Aktif</strong>
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Photorealistic 256-Color + Smooth Motion</strong>
                 </div>
 
                 <button type="button" id="btn-resize-gif" class="btn btn-accent btn-block btn-lg" disabled>
-                  <i class="fa-solid fa-compress"></i> Resize GIF ke 240x240 (Target KB)
+                  <i class="fa-solid fa-compress"></i> Resize GIF ke 240x240 HD (Target KB)
                 </button>
 
                 <div id="gif-progress-container" class="progress-container hidden">
@@ -504,7 +507,7 @@
                   </div>
                   <div class="detail-row">
                     <span>Resolusi Hasil:</span>
-                    <strong id="gif-final-resolution">240 x 240 px (FIX)</strong>
+                    <strong id="gif-final-resolution">240 x 240 px (FIX HD)</strong>
                   </div>
                   <div class="detail-row">
                     <span>Status Target:</span>
@@ -542,7 +545,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Export FIX 240x240 px) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
+      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Export FIX 240x240 HD) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
     </footer>
   </div>
 

@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Fully Automated Engine with FIXED 240x240 Export, Dynamic Auto FPS, and Smooth Motion Blending.
+ * Features Photorealistic 256-Color HD Encoding, Dynamic FPS Auto-Tuning, and Smooth Motion Blending Engine.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -199,16 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const calc = TFTCalculator.calculate(duration, userFps, targetKb);
     currentVideoCalc = calc;
 
-    calcRes.textContent = `240 x 240 px (FIX Native TFT)`;
+    calcRes.textContent = `240 x 240 px (FIX HD)`;
     calcTotalFrames.textContent = `${calc.fps} FPS (${calc.totalFrames} Frames)`;
-    calcColors.textContent = `${calc.recommendedColors} Warna`;
+    calcColors.textContent = `${calc.recommendedColors} Warna HD`;
     calcEstSize.textContent = `~${calc.estimatedSizeKb} KB`;
     calcMessage.textContent = calc.statusMessage;
 
     calcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       calcStatusTag.classList.add('status-success');
-      calcStatusTag.textContent = '240x240 FIX';
+      calcStatusTag.textContent = '256 Warna HD';
     } else if (calc.status === 'warning') {
       calcStatusTag.classList.add('status-warning');
       calcStatusTag.textContent = 'Mendekati Batas';
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- FULL AUTO GENERATOR (FIX 240x240 RESOLUTION WITH MOTION BLENDING) ---
+  // --- PHOTOREALISTIC 256-COLOR HD GENERATOR (FIX 240x240) ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -232,13 +232,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = Math.max(0.1, endT - startT);
     const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
-    const exportRes = 240; // STRICTLY FIXED TO 240
-    let exportColors = currentVideoCalc.recommendedColors;
+    const exportRes = 240;
+    let exportColors = Math.max(128, currentVideoCalc.recommendedColors); // Strict floor: 128-256 colors
     let currentFps = currentVideoCalc.fps;
 
     let finalGifBuffer = null;
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 8;
     let isWithinTarget = false;
 
     while (!isWithinTarget && attempts < maxAttempts) {
@@ -256,8 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const encoder = new GIFEncoder(exportRes, exportRes);
       encoder.setDelay(1000 / currentFps);
-      encoder.setColorCount(exportColors);
-      encoder.setDither(true);
+      encoder.setColorCount(exportColors); // Rich 256 or 192/128 colors!
+      encoder.setDither(true); // Sharp Floyd-Steinberg Dithering
       encoder.start();
 
       for (let i = 0; i < totalFrames; i++) {
@@ -266,25 +266,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply Smooth Motion Blending for low-FPS renders so motion is smooth
         const useMotionBlend = currentFps < 18;
-        videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.25);
+        videoCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 10);
+        // sampleInterval = 1: Train palette on 100% of frame pixels for photorealistic skin tones
+        encoder.addFrame(imgData.data, 1);
 
         const percent = Math.round(((i + 1) / totalFrames) * 100);
         progressPercent.textContent = `${percent}%`;
         progressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          progressStatusText.textContent = `Memproses frame 240x240 @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
+          progressStatusText.textContent = `Memproses frame HD 240x240 (${exportColors} Warna) @ ${currentFps} FPS (${i + 1}/${totalFrames})...`;
         } else {
-          progressStatusText.textContent = `[Adaptif Pass ${attempts}] Menyesuaikan FPS ke ${currentFps} FPS (${exportColors} warna)...`;
+          progressStatusText.textContent = `[Auto FPS Pass ${attempts}] Menyesuaikan ke ${currentFps} FPS (${exportColors} Warna HD)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      progressStatusText.textContent = 'Membuat stream file GIF 240x240...';
+      progressStatusText.textContent = 'Membuat stream file GIF 256 Warna HD...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalGifBuffer = encoder.finish();
@@ -293,11 +294,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb) {
         isWithinTarget = true;
       } else {
-        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS & warna untuk menjaga 240x240 FIX...`;
-        await new Promise((r) => setTimeout(r, 500));
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk menjaga warna ${exportColors} HD...`;
+        await new Promise((r) => setTimeout(r, 400));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, currentFps);
-        exportColors = nextConfig.colors;
+        exportColors = Math.max(128, nextConfig.colors); // Keep colors rich!
         currentFps = nextConfig.fps;
       }
     }
@@ -312,13 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalGifBuffer.length / 1024);
     resultSizeBadge.textContent = `${finalSizeKb} KB`;
     resFinalSize.textContent = `${finalSizeKb} KB (${finalGifBuffer.length.toLocaleString()} bytes)`;
-    resFinalResolution.textContent = `240 x 240 px (FIX Native TFT) @ ${currentFps} FPS (${exportColors} Warna)`;
+    resFinalResolution.textContent = `240 x 240 px (FIX HD) @ ${currentFps} FPS (${exportColors} Warna HD)`;
 
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `🛡️ Strictly Guaranteed (-${diff} KB dari target ${targetKb} KB)` 
-      : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
+      ? `✨ Photorealistic 256-Color HD (-${diff} KB dari target ${targetKb} KB)` 
+      : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
     resultCard.classList.remove('hidden');
@@ -514,16 +515,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const calc = TFTCalculator.calculate(durationSec, userFps, targetKb);
     gifCurrentCalc = calc;
 
-    gifCalcRes.textContent = `240 x 240 px (FIX Native TFT)`;
+    gifCalcRes.textContent = `240 x 240 px (FIX HD)`;
     gifCalcFrames.textContent = `${calc.fps} FPS (${calc.totalFrames} Frames)`;
-    gifCalcColors.textContent = `${calc.recommendedColors} Warna`;
+    gifCalcColors.textContent = `${calc.recommendedColors} Warna HD`;
     gifCalcEstSize.textContent = `~${calc.estimatedSizeKb} KB`;
     gifCalcMessage.textContent = calc.statusMessage;
 
     gifCalcStatusTag.className = 'status-badge';
     if (calc.status === 'success') {
       gifCalcStatusTag.classList.add('status-success');
-      gifCalcStatusTag.textContent = '240x240 FIX';
+      gifCalcStatusTag.textContent = '256 Warna HD';
     } else if (calc.status === 'warning') {
       gifCalcStatusTag.classList.add('status-warning');
       gifCalcStatusTag.textContent = 'Mendekati Batas';
@@ -540,14 +541,14 @@ document.addEventListener('DOMContentLoaded', () => {
     gifProgressContainer.classList.remove('hidden');
     gifResultCard.classList.add('hidden');
 
-    const exportRes = 240; // STRICTLY FIXED TO 240
-    let exportColors = gifCurrentCalc.recommendedColors;
+    const exportRes = 240;
+    let exportColors = Math.max(128, gifCurrentCalc.recommendedColors);
     let targetFps = gifCurrentCalc.fps;
     const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
     let finalBuffer = null;
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 8;
     let isWithinTarget = false;
 
     while (!isWithinTarget && attempts < maxAttempts) {
@@ -580,25 +581,25 @@ document.addEventListener('DOMContentLoaded', () => {
         gifCropper.video = srcFrame.canvas;
 
         const useMotionBlend = targetFps < 18;
-        gifCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.25);
+        gifCropper.exportFrameToCanvas(renderCanvas, useMotionBlend, 0.22);
 
         const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-        encoder.addFrame(imgData.data, 10);
+        encoder.addFrame(imgData.data, 1);
 
         const percent = Math.round(((i + 1) / targetFrameCount) * 100);
         gifProgressPercent.textContent = `${percent}%`;
         gifProgressBarFill.style.width = `${percent}%`;
         
         if (attempts === 1) {
-          gifProgressStatusText.textContent = `Memproses frame 240x240 @ ${targetFps} FPS (${i + 1}/${targetFrameCount})...`;
+          gifProgressStatusText.textContent = `Memproses frame HD 240x240 (${exportColors} Warna) @ ${targetFps} FPS (${i + 1}/${targetFrameCount})...`;
         } else {
-          gifProgressStatusText.textContent = `[Adaptif Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${targetFps} FPS, ${exportColors} warna)...`;
+          gifProgressStatusText.textContent = `[Auto FPS Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${targetFps} FPS, ${exportColors} Warna HD)...`;
         }
 
         await new Promise((r) => setTimeout(r, 5));
       }
 
-      gifProgressStatusText.textContent = 'Mengompresi file GIF 240x240...';
+      gifProgressStatusText.textContent = 'Mengompresi file GIF 256 Warna HD...';
       await new Promise((r) => setTimeout(r, 10));
 
       finalBuffer = encoder.finish();
@@ -607,11 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (generatedKb <= targetKb) {
         isWithinTarget = true;
       } else {
-        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS & warna...`;
-        await new Promise((r) => setTimeout(r, 500));
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Menyesuaikan FPS untuk menjaga warna ${exportColors} HD...`;
+        await new Promise((r) => setTimeout(r, 400));
 
         const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, targetFps);
-        exportColors = nextConfig.colors;
+        exportColors = Math.max(128, nextConfig.colors);
         targetFps = nextConfig.fps;
       }
     }
@@ -626,13 +627,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSizeKb = Math.round(finalBuffer.length / 1024);
     gifResultSizeBadge.textContent = `${finalSizeKb} KB`;
     gifFinalSize.textContent = `${finalSizeKb} KB (${finalBuffer.length.toLocaleString()} bytes)`;
-    gifFinalResolution.textContent = `240 x 240 px (FIX Native TFT) @ ${targetFps} FPS (${exportColors} Warna)`;
+    gifFinalResolution.textContent = `240 x 240 px (FIX HD) @ ${targetFps} FPS (${exportColors} Warna HD)`;
 
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `🛡️ Strictly Guaranteed (-${diff} KB dari target ${targetKb} KB)` 
-      : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
+      ? `✨ Photorealistic 256-Color HD (-${diff} KB dari target ${targetKb} KB)` 
+      : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
@@ -670,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentLine) lines.push(currentLine);
 
     if (bytes.length > maxSample) {
-      lines.push(`/* ... ${bytes.length - maxSample} bytes lainnya ... */`);
+      lines.push(`/* ... ${bytes.length - maxSample} bytes me-salin byte array ... */`);
     }
 
     code += lines.join('\n  ');
