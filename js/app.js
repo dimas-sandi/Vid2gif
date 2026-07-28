@@ -120,8 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
       trimStartInput.max = dur;
       trimEndInput.max = dur;
       trimStartInput.value = '0.0';
-      // Default to max 5.0 seconds clip
-      trimEndInput.value = Math.min(5.0, dur).toFixed(1);
+      // Default to full video duration (speedup will automatically compress it to max 5.0s if needed)
+      trimEndInput.value = dur.toFixed(1);
 
       videoCropper.resetTransform();
       videoCropper.startRenderLoop();
