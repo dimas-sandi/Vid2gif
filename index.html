@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vid2GIF - Konverter GIF TFT 1.28" (240x240 HD)</title>
-  <meta name="description" content="Konverter video ke GIF statis HD khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan WhatsApp-style crop, target size calculator, dan 256-color HD quantization.">
+  <title>Vid2GIF - Ezgif-Style HD Converter TFT 1.28" (240x240)</title>
+  <meta name="description" content="Konverter video ke GIF statis Ezgif-Style khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan 256-color HD quantization.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,7 @@
         </div>
         <div>
           <h1>Vid2GIF <span class="tft-tag">240x240 HD</span></h1>
-          <p class="subtitle">Konverter & Resizer GIF Photorealistic 256-Warna untuk Display Smartwatch 1.28"</p>
+          <p class="subtitle">Konverter Video ke GIF Statis TFT 1.28" (Ezgif-Style Photorealistic 256-Color)</p>
         </div>
       </div>
       <div class="header-actions">
@@ -68,7 +68,7 @@
                   <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
                 <h3>Pilih Video atau Seret File ke Sini</h3>
-                <p>Mendukung format MP4, WebM, MOV (Photorealistic 256-Color Palette & Sharp Details)</p>
+                <p>Mendukung format MP4, WebM, MOV (Ezgif-Style 256-Color HD Palette)</p>
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('video-input').click()">
                   <i class="fa-solid fa-file-video"></i> Buka File Video
                 </button>
@@ -79,7 +79,7 @@
             <div id="workspace" class="workspace hidden">
               
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> 1. WhatsApp-Style 1:1 Crop (240x240 HD)</h3>
+                <h3><i class="fa-solid fa-crop"></i> 1:1 Crop & Position (240x240 FIX)</h3>
                 <div class="mask-toggle-group">
                   <button type="button" id="btn-mask-round" class="btn-toggle active" title="Bentuk Layar GC9A01 Bulat">
                     <i class="fa-regular fa-circle"></i> Bulat 1.28"
@@ -156,7 +156,7 @@
             
             <div class="card settings-card">
               <div class="card-header">
-                <h3><i class="fa-solid fa-sliders"></i> 2. Target Size & Auto FPS Engine</h3>
+                <h3><i class="fa-solid fa-sliders"></i> Target Size & Auto FPS Engine</h3>
               </div>
               
               <div class="card-body">
@@ -164,7 +164,7 @@
                 <div class="form-group">
                   <div class="label-with-tooltip">
                     <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
-                    <span class="tooltip-info" title="Ukuran maksimal file GIF (Palet 256 warna tetap terjaga, FPS disesuaikan otomatis)">?</span>
+                    <span class="tooltip-info" title="Ukuran maksimal file GIF (FPS terkalkulasi otomatis agar muat)">?</span>
                   </div>
                   
                   <div class="input-with-unit">
@@ -180,23 +180,10 @@
                   </div>
                 </div>
 
-                <div class="form-group">
-                  <div class="label-with-tooltip">
-                    <label for="target-fps"><i class="fa-solid fa-gauge-high"></i> Max FPS Limit:</label>
-                    <span id="fps-display" class="mono-badge">15 FPS</span>
-                  </div>
-                  <input type="range" id="target-fps" min="5" max="24" step="1" value="15">
-                  <div class="range-labels">
-                    <span>5 FPS (Super Smooth Blend)</span>
-                    <span>15 FPS</span>
-                    <span>24 FPS (Max)</span>
-                  </div>
-                </div>
-
                 <!-- Auto-Calculator Summary Card -->
                 <div id="calc-summary" class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240 HD</h4>
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif Ezgif-Style</h4>
                     <span id="calc-status-tag" class="status-badge status-success">256 Warna HD</span>
                   </div>
 
@@ -206,12 +193,12 @@
                       <span id="calc-res" class="calc-value mono-highlight">240 x 240 px (FIX HD)</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Auto FPS</span>
+                      <span class="calc-label">Calculated FPS</span>
                       <span id="calc-total-frames" class="calc-value mono-highlight">15 FPS (45 Frames)</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Palet Warna</span>
-                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna Full HD</span>
+                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna Ezgif HD</span>
                     </div>
                     <div class="calc-item">
                       <span class="calc-label">Estimasi Size</span>
@@ -219,11 +206,11 @@
                     </div>
                   </div>
 
-                  <p id="calc-message" class="calc-message">Warna kulit & pencahayaan tetap 256 warna tajam. FPS disesuaikan agar muat di bawah target.</p>
+                  <p id="calc-message" class="calc-message">Kualitas Ezgif 256 Warna HD. FPS terkalkulasi otomatis.</p>
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Photorealistic 256-Color + Smooth Motion</strong>
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Ezgif-Style Photorealistic 256-Color</strong>
                 </div>
 
                 <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
@@ -329,7 +316,7 @@
             <div id="gif-workspace" class="workspace hidden">
               
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> WhatsApp-Style GIF Crop (240x240 HD)</h3>
+                <h3><i class="fa-solid fa-crop"></i> GIF Crop & Scale (240x240 HD)</h3>
                 <div class="mask-toggle-group">
                   <button type="button" id="gif-btn-mask-round" class="btn-toggle active">
                     <i class="fa-regular fa-circle"></i> Bulat 1.28"
@@ -417,23 +404,10 @@
                   </div>
                 </div>
 
-                <div class="form-group">
-                  <div class="label-with-tooltip">
-                    <label for="gif-target-fps"><i class="fa-solid fa-gauge-high"></i> Max FPS Limit:</label>
-                    <span id="gif-fps-display" class="mono-badge">15 FPS</span>
-                  </div>
-                  <input type="range" id="gif-target-fps" min="5" max="24" step="1" value="15">
-                  <div class="range-labels">
-                    <span>5 FPS (Smooth Blend)</span>
-                    <span>15 FPS</span>
-                    <span>24 FPS</span>
-                  </div>
-                </div>
-
                 <!-- GIF Auto-Calc Summary -->
                 <div id="gif-calc-summary" class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif 240x240 HD</h4>
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif Ezgif-Style</h4>
                     <span id="gif-calc-status-tag" class="status-badge status-success">256 Warna HD</span>
                   </div>
 
@@ -460,7 +434,7 @@
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Photorealistic 256-Color + Smooth Motion</strong>
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Ezgif-Style Photorealistic 256-Color</strong>
                 </div>
 
                 <button type="button" id="btn-resize-gif" class="btn btn-accent btn-block btn-lg" disabled>
@@ -545,7 +519,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Export FIX 240x240 HD) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
+      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Export FIX 240x240 HD Ezgif-Style) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
     </footer>
   </div>
 

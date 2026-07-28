@@ -1,6 +1,7 @@
 /**
  * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
- * Features NeuQuant Color Quantization (100% Pixel Sample Rate) with Floyd-Steinberg Dithering for crystal-clear output.
+ * Ezgif-Style Photorealistic 256-Color Palette Engine with Floyd-Steinberg Dithering.
+ * Corrected RGB Channel Mapping for exact skin tones and lighting fidelity.
  */
 
 // --- NeuQuant Color Quantizer ---
@@ -29,9 +30,9 @@ class NeuQuant {
     for (let i = 0; i < this.netsize; i++) {
       this.network[i] = new Float64Array(4);
       let v = (i * 256) / this.netsize;
-      this.network[i][0] = v;
-      this.network[i][1] = v;
-      this.network[i][2] = v;
+      this.network[i][0] = v; // Red
+      this.network[i][1] = v; // Green
+      this.network[i][2] = v; // Blue
     }
 
     this.netindex = new Int32Array(256);
@@ -51,6 +52,7 @@ class NeuQuant {
     let index = new Int32Array(this.netsize);
     for (let i = 0; i < this.netsize; i++) index[i] = i;
 
+    // Sort network by green channel for fast lookup index
     for (let i = 0; i < this.netsize; i++) {
       let smallpos = i;
       let smallval = this.network[i][1];
@@ -73,9 +75,9 @@ class NeuQuant {
 
     let k = 0;
     for (let i = 0; i < this.netsize; i++) {
-      map[k++] = Math.round(this.network[i][0]);
-      map[k++] = Math.round(this.network[i][1]);
-      map[k++] = Math.round(this.network[i][2]);
+      map[k++] = Math.round(this.network[i][0]); // Red
+      map[k++] = Math.round(this.network[i][1]); // Green
+      map[k++] = Math.round(this.network[i][2]); // Blue
     }
     return map;
   }
@@ -111,7 +113,7 @@ class NeuQuant {
     for (let j = previouscol + 1; j < 256; j++) this.netindex[j] = this.maxnetpos;
   }
 
-  alterneigh(rad, i, b, g, r) {
+  alterneigh(rad, i, r, g, b) {
     let lo = Math.max(i - rad, -1);
     let hi = Math.min(i + rad, this.netsize);
     let j = i + 1;
@@ -121,27 +123,27 @@ class NeuQuant {
       let a = Math.round(this.radpower[m++]);
       if (j < hi) {
         let p = this.network[j++];
-        p[0] -= (a * (p[0] - b)) / this.alpharadbias;
+        p[0] -= (a * (p[0] - r)) / this.alpharadbias;
         p[1] -= (a * (p[1] - g)) / this.alpharadbias;
-        p[2] -= (a * (p[2] - r)) / this.alpharadbias;
+        p[2] -= (a * (p[2] - b)) / this.alpharadbias;
       }
       if (k > lo) {
         let p = this.network[k--];
-        p[0] -= (a * (p[0] - b)) / this.alpharadbias;
+        p[0] -= (a * (p[0] - r)) / this.alpharadbias;
         p[1] -= (a * (p[1] - g)) / this.alpharadbias;
-        p[2] -= (a * (p[2] - r)) / this.alpharadbias;
+        p[2] -= (a * (p[2] - b)) / this.alpharadbias;
       }
     }
   }
 
-  altersingle(alpha, i, b, g, r) {
+  altersingle(alpha, i, r, g, b) {
     let p = this.network[i];
-    p[0] -= (alpha * (p[0] - b)) / this.alphabias;
+    p[0] -= (alpha * (p[0] - r)) / this.alphabias;
     p[1] -= (alpha * (p[1] - g)) / this.alphabias;
-    p[2] -= (alpha * (p[2] - r)) / this.alphabias;
+    p[2] -= (alpha * (p[2] - b)) / this.alphabias;
   }
 
-  contest(b, g, r) {
+  contest(r, g, b) {
     let bestd = 1.0e30;
     let bestbiasd = bestd;
     let bestpos = -1;
@@ -149,7 +151,7 @@ class NeuQuant {
 
     for (let i = 0; i < this.netsize; i++) {
       let p = this.network[i];
-      let dist = Math.abs(p[0] - b) + Math.abs(p[1] - g) + Math.abs(p[2] - r);
+      let dist = Math.abs(p[0] - r) + Math.abs(p[1] - g) + Math.abs(p[2] - b);
       if (dist < bestd) {
         bestd = dist;
         bestpos = i;
@@ -187,14 +189,14 @@ class NeuQuant {
     let pix = 0;
 
     for (let i = 0; i < samplepixels; i++) {
-      let b = this.pixels[pix] & 0xff;
+      let r = this.pixels[pix] & 0xff;
       let g = this.pixels[pix + 1] & 0xff;
-      let r = this.pixels[pix + 2] & 0xff;
+      let b = this.pixels[pix + 2] & 0xff;
 
-      let j = this.contest(b, g, r);
+      let j = this.contest(r, g, b);
 
-      this.altersingle(alpha, j, b, g, r);
-      if (rad !== 0) this.alterneigh(rad, j, b, g, r);
+      this.altersingle(alpha, j, r, g, b);
+      if (rad !== 0) this.alterneigh(rad, j, r, g, b);
 
       pix += step;
       if (pix >= lengthcount) pix = 0;
@@ -205,21 +207,21 @@ class NeuQuant {
         rad = radius >> this.radiusbiasshift;
         if (rad <= 1) rad = 0;
         for (let k = 0; k < rad; k++) {
-          this.radpower[k] = alpha * (((rad * rad - k * k) * this.radbias) / (rad * rad));
+          this.radpower[k] = alpha * (((rad * rad - i * i) * this.radbias) / (rad * rad));
         }
       }
     }
   }
 
-  lookupRGB(b, g, r) {
+  lookupRGB(r, g, b) {
     let bestd = 1000000;
     let best = 0;
     for (let i = 0; i < this.netsize; i++) {
       let p = this.network[i];
-      let db = p[0] - b;
+      let dr = p[0] - r;
       let dg = p[1] - g;
-      let dr = p[2] - r;
-      let d = db * db + dg * dg + dr * dr;
+      let db = p[2] - b;
+      let d = dr * dr + dg * dg + db * db;
       if (d < bestd) {
         bestd = d;
         best = i;
@@ -295,7 +297,7 @@ class GIFEncoder {
   }
 
   addFrame(pixels, sampleInterval = 1) {
-    // Train palette using NeuQuant on crisp raw pixels with 100% pixel sample rate (sampleInterval = 1)
+    // Train palette using NeuQuant with 100% pixel sample rate (sampleInterval = 1) and exact RGB alignment
     const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
@@ -304,7 +306,7 @@ class GIFEncoder {
     const indexedPixels = new Uint8Array(this.width * this.height);
 
     if (this.useDither) {
-      // Floyd-Steinberg Sharp Dithering Algorithm
+      // Floyd-Steinberg Sharp Dithering Algorithm with exact RGB error propagation
       const w = this.width;
       const h = this.height;
       const rErr = new Float32Array((w + 2) * (h + 2));
@@ -317,49 +319,49 @@ class GIFEncoder {
           const pixIdx = (y * w + x) * 4;
           const errIdx = (y + 1) * (w + 2) + (x + 1);
 
-          let b = pixels[pixIdx] + bErr[errIdx];
+          let r = pixels[pixIdx] + rErr[errIdx];
           let g = pixels[pixIdx + 1] + gErr[errIdx];
-          let r = pixels[pixIdx + 2] + rErr[errIdx];
+          let b = pixels[pixIdx + 2] + bErr[errIdx];
 
-          b = Math.max(0, Math.min(255, b));
-          g = Math.max(0, Math.min(255, g));
           r = Math.max(0, Math.min(255, r));
+          g = Math.max(0, Math.min(255, g));
+          b = Math.max(0, Math.min(255, b));
 
-          const colorIdx = nq.lookupRGB(b, g, r);
+          const colorIdx = nq.lookupRGB(r, g, b);
           indexedPixels[k++] = colorIdx;
 
-          const paletteB = colorMap[colorIdx * 3];
+          const paletteR = colorMap[colorIdx * 3];
           const paletteG = colorMap[colorIdx * 3 + 1];
-          const paletteR = colorMap[colorIdx * 3 + 2];
+          const paletteB = colorMap[colorIdx * 3 + 2];
 
-          const errB = b - paletteB;
-          const errG = g - paletteG;
           const errR = r - paletteR;
+          const errG = g - paletteG;
+          const errB = b - paletteB;
 
-          bErr[errIdx + 1] += errB * (7 / 16);
-          gErr[errIdx + 1] += errG * (7 / 16);
           rErr[errIdx + 1] += errR * (7 / 16);
+          gErr[errIdx + 1] += errG * (7 / 16);
+          bErr[errIdx + 1] += errB * (7 / 16);
 
-          bErr[errIdx + w + 1] += errB * (3 / 16);
-          gErr[errIdx + w + 1] += errG * (3 / 16);
           rErr[errIdx + w + 1] += errR * (3 / 16);
+          gErr[errIdx + w + 1] += errG * (3 / 16);
+          bErr[errIdx + w + 1] += errB * (3 / 16);
 
-          bErr[errIdx + w + 2] += errB * (5 / 16);
-          gErr[errIdx + w + 2] += errG * (5 / 16);
           rErr[errIdx + w + 2] += errR * (5 / 16);
+          gErr[errIdx + w + 2] += errG * (5 / 16);
+          bErr[errIdx + w + 2] += errB * (5 / 16);
 
-          bErr[errIdx + w + 3] += errB * (1 / 16);
-          gErr[errIdx + w + 3] += errG * (1 / 16);
           rErr[errIdx + w + 3] += errR * (1 / 16);
+          gErr[errIdx + w + 3] += errG * (1 / 16);
+          bErr[errIdx + w + 3] += errB * (1 / 16);
         }
       }
     } else {
       let k = 0;
       for (let i = 0; i < pixels.length; i += 4) {
-        let b = pixels[i];
+        let r = pixels[i];
         let g = pixels[i + 1];
-        let r = pixels[i + 2];
-        indexedPixels[k++] = nq.lookupRGB(b, g, r);
+        let b = pixels[i + 2];
+        indexedPixels[k++] = nq.lookupRGB(r, g, b);
       }
     }
 
