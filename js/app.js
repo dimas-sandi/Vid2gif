@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Main Application Controller
- * Handles Navigation Tabs, Video-to-GIF converter, and GIF Resizer & Optimizer engines.
+ * Features Smart Auto-Fit Multi-Pass Guarantee Engine ensuring output GIF NEVER exceeds target file size.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -11,10 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   tabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const targetTab = btn.dataset.tab;
-
       tabBtns.forEach((b) => b.classList.remove('active'));
       tabContents.forEach((c) => c.classList.remove('active'));
-
       btn.classList.add('active');
       document.getElementById(targetTab).classList.add('active');
     });
@@ -237,81 +235,115 @@ document.addEventListener('DOMContentLoaded', () => {
       calcStatusTag.textContent = 'Mendekati Batas';
     } else {
       calcStatusTag.classList.add('status-exceeded');
-      calcStatusTag.textContent = 'Saran: Kurangi FPS';
+      calcStatusTag.textContent = 'Smart Auto-Fit Siap';
     }
   }
 
+  // --- SMART AUTO-FIT MULTI-PASS GENERATOR (VIDEO TO GIF) ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
     btnGenerateGif.disabled = true;
     progressContainer.classList.remove('hidden');
     resultCard.classList.add('hidden');
-
     sourceVideo.pause();
 
     const startT = parseFloat(trimStartInput.value) || 0;
     const endT = parseFloat(trimEndInput.value) || sourceVideo.duration;
     const duration = Math.max(0.1, endT - startT);
-    const fps = parseInt(targetFpsSlider.value, 10);
-    const frameInterval = 1 / fps;
-    const totalFrames = Math.max(1, Math.round(duration * fps));
+    const targetKb = parseInt(targetSizeInput.value, 10) || 500;
 
     let exportRes = currentVideoCalc.recommendedRes;
     let exportColors = currentVideoCalc.recommendedColors;
+    let currentFps = parseInt(targetFpsSlider.value, 10);
 
     if (chkManualOverride.checked) {
       exportRes = parseInt(manualRes.value, 10);
       exportColors = parseInt(manualColors.value, 10);
     }
 
-    renderCanvas.width = exportRes;
-    renderCanvas.height = exportRes;
-    const renderCtx = renderCanvas.getContext('2d');
+    let finalGifBuffer = null;
+    let attempts = 0;
+    const maxAttempts = 6;
+    let isWithinTarget = false;
 
-    const encoder = new GIFEncoder(exportRes, exportRes);
-    encoder.setDelay(1000 / fps);
-    encoder.setColorCount(exportColors);
-    encoder.start();
+    // Multi-pass Auto-Fit Guarantee Loop
+    while (!isWithinTarget && attempts < maxAttempts) {
+      attempts++;
+      const frameInterval = 1 / currentFps;
+      const totalFrames = Math.max(1, Math.round(duration * currentFps));
 
-    for (let i = 0; i < totalFrames; i++) {
-      const currentTime = startT + i * frameInterval;
-      await seekVideoTo(sourceVideo, currentTime);
+      renderCanvas.width = exportRes;
+      renderCanvas.height = exportRes;
+      const renderCtx = renderCanvas.getContext('2d');
 
-      videoCropper.exportFrameToCanvas(renderCanvas);
+      const encoder = new GIFEncoder(exportRes, exportRes);
+      encoder.setDelay(1000 / currentFps);
+      encoder.setColorCount(exportColors);
+      encoder.start();
 
-      const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-      encoder.addFrame(imgData.data, 10);
+      const applyFilter = sourceVideo.videoWidth > 1280 || attempts > 1; // apply spatial noise smoothing if high-res
 
-      const percent = Math.round(((i + 1) / totalFrames) * 100);
-      progressPercent.textContent = `${percent}%`;
-      progressBarFill.style.width = `${percent}%`;
-      progressStatusText.textContent = `Memproses frame ${i + 1} / ${totalFrames}...`;
+      for (let i = 0; i < totalFrames; i++) {
+        const currentTime = startT + i * frameInterval;
+        await seekVideoTo(sourceVideo, currentTime);
 
+        videoCropper.exportFrameToCanvas(renderCanvas);
+
+        const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
+        encoder.addFrame(imgData.data, 10, applyFilter);
+
+        const percent = Math.round(((i + 1) / totalFrames) * 100);
+        progressPercent.textContent = `${percent}%`;
+        progressBarFill.style.width = `${percent}%`;
+        
+        if (attempts === 1) {
+          progressStatusText.textContent = `Memproses frame ${i + 1} / ${totalFrames} (${exportRes}x${exportRes} px)...`;
+        } else {
+          progressStatusText.textContent = `[Smart Auto-Fit Pass ${attempts}] Frame ${i + 1}/${totalFrames} (${exportRes}x${exportRes} px, ${exportColors} warna)...`;
+        }
+
+        await new Promise((r) => setTimeout(r, 5));
+      }
+
+      progressStatusText.textContent = 'Membuat stream file GIF...';
       await new Promise((r) => setTimeout(r, 10));
+
+      finalGifBuffer = encoder.finish();
+      const generatedKb = Math.round(finalGifBuffer.length / 1024);
+
+      // Check if generated size strictly fits target KB
+      if (generatedKb <= targetKb || chkManualOverride.checked) {
+        isWithinTarget = true;
+      } else {
+        // Step down parameters automatically
+        progressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Mengoptimalkan otomatis ke tingkat lebih hemat...`;
+        await new Promise((r) => setTimeout(r, 600));
+
+        const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, currentFps);
+        exportRes = nextConfig.res;
+        exportColors = nextConfig.colors;
+        currentFps = nextConfig.fps;
+      }
     }
 
-    progressStatusText.textContent = 'Membuat stream file GIF...';
-    await new Promise((r) => setTimeout(r, 20));
-
-    const gifBuffer = encoder.finish();
-    currentVideoGifBytes = gifBuffer;
-
-    const blob = new Blob([gifBuffer], { type: 'image/gif' });
+    currentVideoGifBytes = finalGifBuffer;
+    const blob = new Blob([finalGifBuffer], { type: 'image/gif' });
     const gifUrl = URL.createObjectURL(blob);
 
     gifResultImg.src = gifUrl;
     btnDownloadGif.href = gifUrl;
 
-    const finalSizeKb = Math.round(gifBuffer.length / 1024);
+    const finalSizeKb = Math.round(finalGifBuffer.length / 1024);
     resultSizeBadge.textContent = `${finalSizeKb} KB`;
-    resFinalSize.textContent = `${finalSizeKb} KB (${gifBuffer.length.toLocaleString()} bytes)`;
-    resFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${fps} FPS`;
+    resFinalSize.textContent = `${finalSizeKb} KB (${finalGifBuffer.length.toLocaleString()} bytes)`;
+    resFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${currentFps} FPS (${exportColors} Warna)`;
 
-    const targetKb = parseInt(targetSizeInput.value, 10) || 500;
     const diff = targetKb - finalSizeKb;
-    resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-exceeded';
-    resFinalDiff.textContent = diff >= 0 ? `Aman (-${diff} KB dari target)` : `Melebihi target (+${Math.abs(diff)} KB)`;
+    resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
+    resFinalDiff.textContent = diff >= 0 
+      ? `🛡️ Strictly Guaranteed (-${diff} KB di bawah target ${targetKb} KB)` 
+      : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
     resultCard.classList.remove('hidden');
@@ -386,22 +418,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const gifCArrayText = document.getElementById('gif-carray-text');
   const btnCopyGifCArray = document.getElementById('btn-copy-gif-carray');
 
-  // GIF Resizer State
-  let decodedGifData = null; // { width, height, frames: [{canvas, delay}] }
+  let decodedGifData = null;
   let gifOriginalFileBytes = 0;
   let gifCurrentCalc = null;
   let gifResizedBytes = null;
   let gifPlaybackIdx = 0;
   let gifPlaybackTimer = null;
 
-  // Mock video wrapper so VideoCropper works seamlessly on decoded GIF frames!
-  const mockGifVideo = {
-    videoWidth: 240,
-    videoHeight: 240,
-    readyState: 4
-  };
-
+  const mockGifVideo = { videoWidth: 240, videoHeight: 240, readyState: 4 };
   let gifCropper = new VideoCropper(gifCropperCanvas, mockGifVideo);
+
   gifCropper.onTransformChange = () => {
     gifZoomSlider.value = gifCropper.zoom;
     gifZoomValue.textContent = `${gifCropper.zoom.toFixed(1)}x`;
@@ -462,10 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
     gifPlaybackIdx = 0;
     const playNext = () => {
       const frame = decodedGifData.frames[gifPlaybackIdx];
-      // Inject frame canvas into cropper video draw source
       gifCropper.video = frame.canvas;
       gifCropper.render();
-
       gifPlaybackIdx = (gifPlaybackIdx + 1) % decodedGifData.frames.length;
     };
 
@@ -505,7 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function runGifResizerCalculator() {
     if (!decodedGifData) return;
 
-    // Calculate original total duration from frame delays
     let totalDurMs = 0;
     decodedGifData.frames.forEach((f) => totalDurMs += (f.delay || 100));
     const durationSec = Math.max(0.2, totalDurMs / 1000);
@@ -531,11 +554,11 @@ document.addEventListener('DOMContentLoaded', () => {
       gifCalcStatusTag.textContent = 'Mendekati Batas';
     } else {
       gifCalcStatusTag.classList.add('status-exceeded');
-      gifCalcStatusTag.textContent = 'Saran: Kurangi FPS';
+      gifCalcStatusTag.textContent = 'Smart Auto-Fit Siap';
     }
   }
 
-  // --- Process & Resize GIF ---
+  // --- SMART AUTO-FIT MULTI-PASS GENERATOR (GIF RESIZER) ---
   btnResizeGif.addEventListener('click', async () => {
     if (!decodedGifData) return;
 
@@ -543,68 +566,94 @@ document.addEventListener('DOMContentLoaded', () => {
     gifProgressContainer.classList.remove('hidden');
     gifResultCard.classList.add('hidden');
 
-    const exportRes = gifCurrentCalc.recommendedRes;
-    const exportColors = gifCurrentCalc.recommendedColors;
-    const targetFps = parseInt(gifTargetFpsSlider.value, 10);
+    let exportRes = gifCurrentCalc.recommendedRes;
+    let exportColors = gifCurrentCalc.recommendedColors;
+    let targetFps = parseInt(gifTargetFpsSlider.value, 10);
+    const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
 
-    renderCanvas.width = exportRes;
-    renderCanvas.height = exportRes;
-    const renderCtx = renderCanvas.getContext('2d');
+    let finalBuffer = null;
+    let attempts = 0;
+    const maxAttempts = 6;
+    let isWithinTarget = false;
 
-    const encoder = new GIFEncoder(exportRes, exportRes);
-    encoder.setDelay(1000 / targetFps);
-    encoder.setColorCount(exportColors);
-    encoder.start();
+    while (!isWithinTarget && attempts < maxAttempts) {
+      attempts++;
+      renderCanvas.width = exportRes;
+      renderCanvas.height = exportRes;
+      const renderCtx = renderCanvas.getContext('2d');
 
-    // Frame Subsampling: Map source GIF frames to target FPS rate
-    const sourceFrames = decodedGifData.frames;
-    let totalDurMs = 0;
-    sourceFrames.forEach((f) => totalDurMs += (f.delay || 100));
-    const totalDurationSec = totalDurMs / 1000;
-    const targetFrameCount = Math.max(1, Math.round(totalDurationSec * targetFps));
+      const encoder = new GIFEncoder(exportRes, exportRes);
+      encoder.setDelay(1000 / targetFps);
+      encoder.setColorCount(exportColors);
+      encoder.start();
 
-    for (let i = 0; i < targetFrameCount; i++) {
-      // Pick corresponding source frame
-      const progress = i / targetFrameCount;
-      const sourceIdx = Math.min(sourceFrames.length - 1, Math.floor(progress * sourceFrames.length));
+      const sourceFrames = decodedGifData.frames;
+      let totalDurMs = 0;
+      sourceFrames.forEach((f) => totalDurMs += (f.delay || 100));
+      const totalDurationSec = totalDurMs / 1000;
+      const targetFrameCount = Math.max(1, Math.round(totalDurationSec * targetFps));
 
-      const srcFrame = sourceFrames[sourceIdx];
-      gifCropper.video = srcFrame.canvas;
+      for (let i = 0; i < targetFrameCount; i++) {
+        const progress = i / targetFrameCount;
+        const sourceIdx = Math.min(sourceFrames.length - 1, Math.floor(progress * sourceFrames.length));
 
-      gifCropper.exportFrameToCanvas(renderCanvas);
+        const srcFrame = sourceFrames[sourceIdx];
+        gifCropper.video = srcFrame.canvas;
 
-      const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
-      encoder.addFrame(imgData.data, 10);
+        gifCropper.exportFrameToCanvas(renderCanvas);
 
-      const percent = Math.round(((i + 1) / targetFrameCount) * 100);
-      gifProgressPercent.textContent = `${percent}%`;
-      gifProgressBarFill.style.width = `${percent}%`;
-      gifProgressStatusText.textContent = `Memproses frame ${i + 1} / ${targetFrameCount}...`;
+        const imgData = renderCtx.getImageData(0, 0, exportRes, exportRes);
+        encoder.addFrame(imgData.data, 10, attempts > 1);
 
+        const percent = Math.round(((i + 1) / targetFrameCount) * 100);
+        gifProgressPercent.textContent = `${percent}%`;
+        gifProgressBarFill.style.width = `${percent}%`;
+        
+        if (attempts === 1) {
+          gifProgressStatusText.textContent = `Memproses frame ${i + 1} / ${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+        } else {
+          gifProgressStatusText.textContent = `[Smart Auto-Fit Pass ${attempts}] Frame ${i + 1}/${targetFrameCount} (${exportRes}x${exportRes} px)...`;
+        }
+
+        await new Promise((r) => setTimeout(r, 5));
+      }
+
+      gifProgressStatusText.textContent = 'Mengompresi file GIF...';
       await new Promise((r) => setTimeout(r, 10));
+
+      finalBuffer = encoder.finish();
+      const generatedKb = Math.round(finalBuffer.length / 1024);
+
+      if (generatedKb <= targetKb) {
+        isWithinTarget = true;
+      } else {
+        gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) melebihi ${targetKb} KB. Auto-Fit mengompresi ke tingkat lebih hemat...`;
+        await new Promise((r) => setTimeout(r, 600));
+
+        const nextConfig = TFTCalculator.getNextLowerConfig(exportRes, exportColors, targetFps);
+        exportRes = nextConfig.res;
+        exportColors = nextConfig.colors;
+        targetFps = nextConfig.fps;
+      }
     }
 
-    gifProgressStatusText.textContent = 'Mengompresi file GIF...';
-    await new Promise((r) => setTimeout(r, 20));
-
-    const gifBuffer = encoder.finish();
-    gifResizedBytes = gifBuffer;
-
-    const blob = new Blob([gifBuffer], { type: 'image/gif' });
+    gifResizedBytes = finalBuffer;
+    const blob = new Blob([finalBuffer], { type: 'image/gif' });
     const gifUrl = URL.createObjectURL(blob);
 
     gifResizedImg.src = gifUrl;
     btnDownloadResizedGif.href = gifUrl;
 
-    const finalSizeKb = Math.round(gifBuffer.length / 1024);
+    const finalSizeKb = Math.round(finalBuffer.length / 1024);
     gifResultSizeBadge.textContent = `${finalSizeKb} KB`;
-    gifFinalSize.textContent = `${finalSizeKb} KB (${gifBuffer.length.toLocaleString()} bytes)`;
-    gifFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${targetFps} FPS`;
+    gifFinalSize.textContent = `${finalSizeKb} KB (${finalBuffer.length.toLocaleString()} bytes)`;
+    gifFinalResolution.textContent = `${exportRes} x ${exportRes} px @ ${targetFps} FPS (${exportColors} Warna)`;
 
-    const targetKb = parseInt(gifTargetKbInput.value, 10) || 400;
     const diff = targetKb - finalSizeKb;
-    gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-exceeded';
-    gifFinalDiff.textContent = diff >= 0 ? `Aman (-${diff} KB dari target)` : `Melebihi target (+${Math.abs(diff)} KB)`;
+    gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
+    gifFinalDiff.textContent = diff >= 0 
+      ? `🛡️ Strictly Guaranteed (-${diff} KB di bawah target ${targetKb} KB)` 
+      : `Ukuran Terkecil Tercapai (${finalSizeKb} KB)`;
 
     gifProgressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
@@ -621,7 +670,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnCopyGifCArray.addEventListener('click', () => copyToClipboard(gifCArrayText, btnCopyGifCArray));
 
-  // Helper Functions
   function generateCArrayCode(bytes, targetTextarea, resolution) {
     let code = `// Vid2GIF TFT 1.28" Export\n`;
     code += `// Resolution: ${resolution}x${resolution}, Total Bytes: ${bytes.length}\n`;

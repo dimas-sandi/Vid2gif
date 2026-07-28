@@ -1,23 +1,22 @@
 /**
  * Vid2GIF - Pure Client-side GIF Encoder Engine
- * Includes NeuQuant Color Quantization and LZW GIF Stream Encoder.
+ * Includes NeuQuant Color Quantization, LZW GIF Stream Encoder, and Spatial Noise Pre-filter.
  */
 
 // --- NeuQuant Color Quantizer ---
 class NeuQuant {
   constructor(pixels, samplefac, numColors = 256) {
-    this.netsize = numColors; // number of colours
+    this.netsize = numColors;
     this.maxnetpos = this.netsize - 1;
-    this.initrad = Math.floor(this.netsize / 8); // for 256 cols, radius starts at 32
+    this.initrad = Math.floor(this.netsize / 8);
     this.radiusbiasshift = 6;
     this.radiusbias = 1 << this.radiusbiasshift;
     this.initbiasradius = this.initrad * this.radiusbias;
     this.alphabiasshift = 10;
     this.alphabias = 1 << this.alphabiasshift;
 
-    this.ncycles = 100; // no. of learning cycles
+    this.ncycles = 100;
 
-    // defs for radpower
     this.radbiasshift = 8;
     this.radbias = 1 << this.radbiasshift;
     this.alpharadbshift = this.alphabiasshift + this.radbiasshift;
@@ -52,7 +51,6 @@ class NeuQuant {
     let index = new Int32Array(this.netsize);
     for (let i = 0; i < this.netsize; i++) index[i] = i;
 
-    // sort network by green channel
     for (let i = 0; i < this.netsize; i++) {
       let smallpos = i;
       let smallval = this.network[i][1];
@@ -213,56 +211,6 @@ class NeuQuant {
     }
   }
 
-  map(b, g, r) {
-    let bestd = 1000;
-    let best = -1;
-    let a = this.netindex[g];
-    let i = a;
-    let j = a - 1;
-
-    while (i < this.netsize || j >= 0) {
-      if (i < this.netsize) {
-        let p = this.network[i];
-        let dist = p[1] - g;
-        if (dist >= bestd) i = this.netsize;
-        else {
-          i++;
-          if (dist < 0) dist = -dist;
-          let a2 = p[0] - b; if (a2 < 0) a2 = -a2;
-          dist += a2;
-          if (dist < bestd) {
-            a2 = p[2] - r; if (a2 < 0) a2 = -a2;
-            dist += a2;
-            if (dist < bestd) {
-              bestd = dist;
-              best = p[3] || i - 1;
-            }
-          }
-        }
-      }
-      if (j >= 0) {
-        let p = this.network[j];
-        let dist = g - p[1];
-        if (dist >= bestd) j = -1;
-        else {
-          j--;
-          if (dist < 0) dist = -dist;
-          let a2 = p[0] - b; if (a2 < 0) a2 = -a2;
-          dist += a2;
-          if (dist < bestd) {
-            a2 = p[2] - r; if (a2 < 0) a2 = -a2;
-            dist += a2;
-            if (dist < bestd) {
-              bestd = dist;
-              best = p[3] || j + 1;
-            }
-          }
-        }
-      }
-    }
-    return best < 0 ? 0 : best;
-  }
-
   lookupRGB(b, g, r) {
     let bestd = 1000000;
     let best = 0;
@@ -288,8 +236,8 @@ class GIFEncoder {
     this.height = Math.floor(height);
     this.out = [];
     this.frames = [];
-    this.delay = 10; // 100ths of a sec (10 = 100ms = 10fps)
-    this.repeat = 0; // 0 = loop infinitely
+    this.delay = 10;
+    this.repeat = 0;
     this.colorCount = 256;
   }
 
@@ -308,7 +256,7 @@ class GIFEncoder {
   start() {
     this.out = [];
     this.writeString("GIF89a");
-    this.writeLSD(); // Logical Screen Descriptor
+    this.writeLSD();
   }
 
   writeString(str) {
@@ -325,26 +273,60 @@ class GIFEncoder {
   writeLSD() {
     this.writeShort(this.width);
     this.writeShort(this.height);
-    // packed field: no global color table initially
-    this.out.push(0x70); // 256 colors resolution, no global color table
-    this.out.push(0); // background color index
-    this.out.push(0); // pixel aspect ratio
+    this.out.push(0x70);
+    this.out.push(0);
+    this.out.push(0);
   }
 
   writeNetscapeAppExt() {
-    this.out.push(0x21); // extension introducer
-    this.out.push(0xff); // app extension label
-    this.out.push(11); // block size
+    this.out.push(0x21);
+    this.out.push(0xff);
+    this.out.push(11);
     this.writeString("NETSCAPE2.0");
-    this.out.push(3); // sub-block size
-    this.out.push(1); // loop sub-block id
-    this.writeShort(this.repeat); // loop count
-    this.out.push(0); // block terminator
+    this.out.push(3);
+    this.out.push(1);
+    this.writeShort(this.repeat);
+    this.out.push(0);
   }
 
-  addFrame(pixels, sampleInterval = 10) {
-    // Quantize colors for frame using NeuQuant
-    const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
+  /**
+   * Spatial noise reduction pre-filter for high-resolution video frames
+   * Smooths pixel variance to drastically increase LZW compression efficiency
+   */
+  static applySpatialSmoothing(pixels, width, height) {
+    const output = new Uint8ClampedArray(pixels.length);
+    output.set(pixels);
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+
+        // 3x3 Box average for R, G, B channels
+        let r = 0, g = 0, b = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            r += pixels[nIdx];
+            g += pixels[nIdx + 1];
+            b += pixels[nIdx + 2];
+          }
+        }
+
+        output[idx] = Math.round(r / 9);
+        output[idx + 1] = Math.round(g / 9);
+        output[idx + 2] = Math.round(b / 9);
+      }
+    }
+    return output;
+  }
+
+  addFrame(pixels, sampleInterval = 10, smoothFilter = false) {
+    let processedPixels = pixels;
+    if (smoothFilter) {
+      processedPixels = GIFEncoder.applySpatialSmoothing(pixels, this.width, this.height);
+    }
+
+    const nq = new NeuQuant(processedPixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
 
@@ -352,10 +334,10 @@ class GIFEncoder {
     const indexedPixels = new Uint8Array(this.width * this.height);
 
     let k = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      let b = pixels[i];
-      let g = pixels[i + 1];
-      let r = pixels[i + 2];
+    for (let i = 0; i < processedPixels.length; i += 4) {
+      let b = processedPixels[i];
+      let g = processedPixels[i + 1];
+      let r = processedPixels[i + 2];
       indexedPixels[k++] = nq.lookupRGB(b, g, r);
     }
 
@@ -372,22 +354,21 @@ class GIFEncoder {
   }
 
   writeGraphicCtrlExt() {
-    this.out.push(0x21); // extension introducer
-    this.out.push(0xf9); // GCE label
-    this.out.push(4);    // block size
-    this.out.push(0x04); // packed field: dispose = 1 (restore to background), no transparency
+    this.out.push(0x21);
+    this.out.push(0xf9);
+    this.out.push(4);
+    this.out.push(0x04);
     this.writeShort(this.delay);
-    this.out.push(0);    // transparent color index
-    this.out.push(0);    // block terminator
+    this.out.push(0);
+    this.out.push(0);
   }
 
   writeImageDesc() {
-    this.out.push(0x2c); // image separator
-    this.writeShort(0); // left
-    this.writeShort(0); // top
+    this.out.push(0x2c);
+    this.writeShort(0);
+    this.writeShort(0);
     this.writeShort(this.width);
     this.writeShort(this.height);
-    // Local Color Table Flag = 1, Interlace = 0, Sort = 0, Size = log2(colorCount)-1
     let tableSizeBits = Math.ceil(Math.log2(this.colorCount)) - 1;
     if (tableSizeBits < 0) tableSizeBits = 0;
     this.out.push(0x80 | tableSizeBits);
@@ -397,7 +378,6 @@ class GIFEncoder {
     for (let i = 0; i < colorMap.length; i++) {
       this.out.push(colorMap[i]);
     }
-    // Pad to power of 2 if necessary
     const targetLength = (1 << Math.ceil(Math.log2(this.colorCount))) * 3;
     for (let i = colorMap.length; i < targetLength; i++) {
       this.out.push(0);
@@ -413,11 +393,11 @@ class GIFEncoder {
     for (let i = 0; i < compressed.length; i++) {
       this.out.push(compressed[i]);
     }
-    this.out.push(0); // block terminator
+    this.out.push(0);
   }
 
   finish() {
-    this.out.push(0x3b); // GIF trailer
+    this.out.push(0x3b);
     return new Uint8Array(this.out);
   }
 }
@@ -476,7 +456,6 @@ class LZWEncoder {
       }
     };
 
-    // Dictionary using map/hash table
     const dictionary = new Map();
 
     const resetDictionary = () => {
