@@ -1,6 +1,6 @@
-# Vid2GIF - Konverter Video ke GIF Statis TFT 1.28" (240x240)
+# Vid2GIF - Konverter & Resizer GIF Statis TFT 1.28" (240x240)
 
-Aplikasi web statis modern (100% Client-Side) untuk mengonversi file video menjadi animasi GIF teroptimasi khusus layar TFT LCD 1.28 inch (seperti GC9A01 / ST7789) dengan resolusi native **240x240 pixel**.
+Aplikasi web statis modern (100% Client-Side) untuk mengonversi file video dan mengubah ukuran/mengompresi file GIF menjadi animasi GIF teroptimasi khusus layar TFT LCD 1.28 inch (GC9A01 / ST7789) dengan resolusi native **240x240 pixel**.
 
 ![TFT 1.28 Display GIF Converter](https://img.shields.io/badge/TFT_Display-240x240-06b6d4?style=for-the-badge&logo=microchip)
 ![GitHub Pages Ready](https://img.shields.io/badge/Deployment-GitHub_Pages-6366f1?style=for-the-badge&logo=github)
@@ -9,63 +9,39 @@ Aplikasi web statis modern (100% Client-Side) untuk mengonversi file video menja
 
 ## 🌟 Fitur Utama
 
-1. **WhatsApp-Style Interactive Cropper (1:1 Aspect Ratio)**:
-   - Fitur potong video otomatis ke rasio 1:1 dan resolusi 240x240 px.
-   - Kontrol geser (pan X, Y) dan zoom (scroll wheel / slider / pinch touch) persis seperti pengatur foto profil WhatsApp.
-   - Mode overlay mask **Layar Bulat 1.28" (GC9A01)** dan **Layar Kotak 240x240**.
+### Tab 1: Video ke GIF TFT 1.28"
+- Konversi file MP4, WebM, MOV langsung di browser.
+- **WhatsApp-Style Interactive Cropper**: Potong otomatis ke rasio 1:1, geser (*pan*), dan *zoom* interaktif (1.0x - 4.0x).
+- **Target Size & FPS Calculator**: Tentukan target ukuran file (misal: 256 KB, 500 KB, 1 MB) dan target FPS (5 - 30 FPS). Sistem akan mengkalkulasi otomatis resolusi export terbaik (240x240, 200x200, 180x180, dll.) dan jumlah warna palet.
 
-2. **Kalkulator Resolusi & Size Otomatis (Target File Size & FPS)**:
-   - Pengguna dapat memasukkan **Target Ukuran File GIF** (misal: 256 KB, 500 KB, 1 MB untuk memori SPIFFS / LittleFS ESP32 / Arduino).
-   - Pengguna dapat menentukan **Target FPS** (5 - 30 FPS).
-   - Web mengkalkulasi otomatis resolusi export terbaik (240x240, 200x200, 180x180, 160x160, dll.) dan kedalaman palet warna (256, 128, 64, 32 warna) agar file GIF dipastikan **muat di bawah batas target**.
+### Tab 2: GIF Resizer & Optimizer (Target Size)
+- Upload file `.gif` yang sudah ada untuk di-resize dan dikompresi ulang sesuai batas memori (*Target Size KB*).
+- **WhatsApp-Style GIF Cropper**: Geser dan zoom file GIF yang ada ke tampilan 1:1 240x240 px.
+- **Frame Subsampling & Re-compression**: Menyesuaikan FPS dan memotong jumlah warna palet agar muat di bawah batas KB yang ditentukan.
 
-3. **Simolator Hardware TFT 1.28"**:
-   - Tampilan preview hasil GIF langsung di dalam simulator bezel jam tangan / display TFT 1.28" asli.
-
-4. **Ekspor C-Array (Bonus)**:
-   - Pilihan salin byte array C (`const uint8_t PROGMEM tft_gif_data[]`) untuk kemudahan pengembang mikrokontroler ESP32 / Arduino.
-
-5. **100% Statis & Tanpa Server**:
-   - Diproses sepenuhnya di dalam browser pengguna (Client-Side HTML5, CSS3, Vanilla JS).
-   - Sangat ringan dan siap di-host langsung melalui **GitHub Pages**.
+### Fitur Simulator & Ekspor:
+- **Simulator Hardware GC9A01 1.28"**: Preview animasi GIF secara langsung di dalam bezel jam tangan TFT bulat dengan efek *glass glare*.
+- **C-Array Exporter (ESP32/Arduino)**: Fitur salin buffer `const uint8_t PROGMEM tft_gif_data[]` untuk pemrogram mikrokontroler.
 
 ---
 
 ## 🚀 Cara Upload ke GitHub & Mengaktifkan GitHub Pages
 
-### Langkah 1: Push ke GitHub Repositori Anda
-
-Buka terminal pada folder proyek ini dan jalankan perintah berikut:
+Repositori ini siap di-push ke: `https://github.com/dimas-sandi/Vid2gif.git`
 
 ```bash
-# Inisialisasi Git
-git init
+# 1. Hubungkan ke repositori GitHub Anda
+git remote add origin https://github.com/dimas-sandi/Vid2gif.git
 
-# Tambahkan semua file
-git add .
-
-# Commit perdana
-git commit -m "Initial commit: Vid2GIF TFT 1.28 inch web converter"
-
-# Hubungkan ke repositori GitHub Anda (Ganti URL dengan repo Anda)
-git remote add origin https://github.com/USERNAME/Vid2gif.git
+# 2. Rename branch utama ke main dan push
 git branch -M main
 git push -u origin main
 ```
 
-### Langkah 2: Aktifkan GitHub Pages
-
-1. Buka halaman repositori Anda di GitHub.
-2. Masuk ke menu **Settings** > **Pages** (di sidebar kiri).
-3. Pada bagian **Build and deployment**:
-   - **Source**: Pilih `Deploy from a branch`.
-   - **Branch**: Pilih `main` dan folder `/ (root)`.
-4. Klik **Save**.
-5. Situs Anda akan online secara otomatis di URL: `https://USERNAME.github.io/Vid2gif/`
-
----
-
-## 💻 Lisensi & Kredit
-
-- Dibuat untuk komunitas pembuat hardware, smartwatch custom, dan proyek IoT mikrokontroler ESP32 / Arduino.
-- NeuQuant Color Quantization & LZW Encoder engine disematkan secara murni dalam Javascript.
+### Mengaktifkan GitHub Pages:
+1. Buka repositori Anda di GitHub: `https://github.com/dimas-sandi/Vid2gif`
+2. Masuk ke menu **Settings** > **Pages**.
+3. Di bagian **Build and deployment**:
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main` / `/ (root)`
+4. Klik **Save**. Situs web Anda akan aktif secara gratis di `https://dimas-sandi.github.io/Vid2gif/`.

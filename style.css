@@ -70,8 +70,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--bg-card-border);
 }
 
@@ -119,16 +119,63 @@ body {
   font-size: 0.9rem;
 }
 
-/* Main Grid Layout */
-.main-content {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 28px;
+/* Top Navigation Tabs */
+.navigation-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-card-border);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25 ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+}
+
+/* Tab Contents & Grid Layout */
+.tab-content {
+  display: none;
   flex: 1;
 }
 
+.tab-content.active {
+  display: block;
+}
+
+.grid-two-columns {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 28px;
+}
+
 @media (max-width: 1024px) {
-  .main-content {
+  .grid-two-columns {
     grid-template-columns: 1fr;
   }
 }
@@ -275,7 +322,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-#cropper-canvas {
+#cropper-canvas, #gif-cropper-canvas {
   width: 320px;
   height: 320px;
   border-radius: var(--radius-sm);
@@ -326,8 +373,8 @@ body {
   gap: 8px;
 }
 
-/* Video Trimmer Card */
-.trimmer-card {
+/* Video Trimmer Card & Original GIF Metadata */
+.trimmer-card, .original-gif-meta {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
@@ -449,7 +496,7 @@ body {
   margin-top: 4px;
 }
 
-.preset-btn {
+.preset-btn, .gif-preset-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--bg-card-border);
   color: var(--text-muted);
@@ -461,7 +508,8 @@ body {
   transition: all 0.2s ease;
 }
 
-.preset-btn:hover, .preset-btn.active {
+.preset-btn:hover, .preset-btn.active,
+.gif-preset-btn:hover, .gif-preset-btn.active {
   background: rgba(6, 182, 212, 0.15);
   border-color: var(--primary);
   color: var(--primary);

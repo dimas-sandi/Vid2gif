@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vid2GIF - Konverter Video ke GIF TFT 1.28" (240x240)</title>
-  <meta name="description" content="Konverter video ke GIF statis khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan WhatsApp-style crop, target file size calculator, dan target FPS.">
+  <title>Vid2GIF - Konverter & Resizer GIF TFT 1.28" (240x240)</title>
+  <meta name="description" content="Konverter video ke GIF statis & GIF Resizer khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan WhatsApp-style crop, target size calculator, dan target FPS.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,318 +28,552 @@
         </div>
         <div>
           <h1>Vid2GIF <span class="tft-tag">TFT 1.28"</span></h1>
-          <p class="subtitle">Konverter Video ke GIF Statis untuk Display Smartwatch & Microcontroller (240x240)</p>
+          <p class="subtitle">Konverter & Resizer GIF Statis untuk Display Smartwatch & Microcontroller (240x240)</p>
         </div>
       </div>
       <div class="header-actions">
-        <a href="https://github.com" target="_blank" id="github-link" class="btn btn-outline">
-          <i class="fa-brands fa-github"></i> GitHub Repositori
+        <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" id="github-link" class="btn btn-outline">
+          <i class="fa-brands fa-github"></i> Repositori GitHub
         </a>
       </div>
     </header>
 
+    <!-- Top Navigation Tabs (Video ke GIF vs GIF Resizer) -->
+    <nav class="navigation-tabs">
+      <button type="button" class="tab-btn active" data-tab="tab-video">
+        <i class="fa-solid fa-file-video"></i> Video ke GIF TFT
+      </button>
+      <button type="button" class="tab-btn" data-tab="tab-gif-resize">
+        <i class="fa-solid fa-file-image"></i> GIF Resizer & Optimizer (Target Size)
+      </button>
+    </nav>
+
     <!-- Main Content Layout -->
     <main class="main-content">
       
-      <!-- Left Column: Video Import, Trimmer, & Interactive WhatsApp Cropper -->
-      <section class="panel-section editor-section">
-        
-        <!-- File Dropzone -->
-        <div id="dropzone" class="dropzone">
-          <input type="file" id="video-input" accept="video/mp4,video/webm,video/ogg,video/mov,video/*" hidden>
-          <div class="dropzone-content">
-            <div class="dropzone-icon">
-              <i class="fa-solid fa-cloud-arrow-up"></i>
-            </div>
-            <h3>Pilih Video atau Seret File ke Sini</h3>
-            <p>Mendukung format MP4, WebM, MOV (Maksimal durasi disarankan &lt; 15 detik)</p>
-            <button type="button" class="btn btn-primary" onclick="document.getElementById('video-input').click()">
-              <i class="fa-solid fa-file-video"></i> Buka File Video
-            </button>
-          </div>
-        </div>
-
-        <!-- Video Player & Cropper Workspace (Hidden initially until video loaded) -->
-        <div id="workspace" class="workspace hidden">
+      <!-- ================= TAB 1: VIDEO TO GIF ================= -->
+      <div id="tab-video" class="tab-content active">
+        <div class="grid-two-columns">
           
-          <div class="workspace-header">
-            <h3><i class="fa-solid fa-crop"></i> 1. WhatsApp-Style 1:1 Crop & Position</h3>
-            <div class="mask-toggle-group">
-              <button type="button" id="btn-mask-round" class="btn-toggle active" title="Bentuk Layar GC9A01 Bulat">
-                <i class="fa-regular fa-circle"></i> Bulat 1.28"
-              </button>
-              <button type="button" id="btn-mask-square" class="btn-toggle" title="Bentuk Layar Kotak">
-                <i class="fa-regular fa-square"></i> Kotak 240x240
-              </button>
-            </div>
-          </div>
-
-          <!-- Interactive Cropper Canvas Container -->
-          <div class="cropper-container">
-            <canvas id="cropper-canvas" width="320" height="320"></canvas>
-            <div class="cropper-hint">
-              <span><i class="fa-solid fa-hand-pointer"></i> Geser video untuk atur posisi</span>
-              <span><i class="fa-solid fa-arrow-up-down-left-right"></i> Scroll / Pinch untuk zoom</span>
-            </div>
-          </div>
-
-          <!-- Cropper Toolbar Controls -->
-          <div class="cropper-toolbar">
-            <div class="zoom-control">
-              <label for="zoom-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom:</label>
-              <input type="range" id="zoom-slider" min="1.0" max="4.0" step="0.05" value="1.0">
-              <span id="zoom-value" class="mono-badge">1.0x</span>
-            </div>
-            <div class="cropper-actions">
-              <button type="button" id="btn-center-crop" class="btn btn-sm btn-secondary" title="Posisikan ke tengah">
-                <i class="fa-solid fa-crosshairs"></i> Ke Tengah
-              </button>
-              <button type="button" id="btn-reset-crop" class="btn btn-sm btn-secondary" title="Reset Zoom & Posisi">
-                <i class="fa-solid fa-rotate-left"></i> Reset
-              </button>
-            </div>
-          </div>
-
-          <!-- Hidden HTML5 Video element for decoding -->
-          <video id="source-video" playsinline muted style="display: none;"></video>
-
-          <!-- Video Timeline & Trimmer -->
-          <div class="trimmer-card">
-            <div class="trimmer-header">
-              <span><i class="fa-solid fa-scissors"></i> Potong Durasi Clip Video</span>
-              <span id="video-dur-badge" class="mono-badge">Durasi: 0.0s</span>
-            </div>
+          <!-- Left Column: Video Dropzone & Interactive Cropper -->
+          <section class="panel-section">
             
-            <div class="trimmer-controls">
-              <button type="button" id="btn-play-video" class="btn btn-sm btn-primary">
-                <i class="fa-solid fa-play"></i> Play
-              </button>
-
-              <div class="trim-inputs">
-                <div class="trim-input-group">
-                  <label for="trim-start">Mulai (s):</label>
-                  <input type="number" id="trim-start" min="0" step="0.1" value="0.0">
+            <div id="dropzone" class="dropzone">
+              <input type="file" id="video-input" accept="video/mp4,video/webm,video/ogg,video/mov,video/*" hidden>
+              <div class="dropzone-content">
+                <div class="dropzone-icon">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
-                <div class="trim-input-group">
-                  <label for="trim-end">Selesai (s):</label>
-                  <input type="number" id="trim-end" min="0.1" step="0.1" value="3.0">
-                </div>
-                <div class="trim-input-group">
-                  <label>Total Durasi:</label>
-                  <span id="clip-duration" class="mono-highlight">3.0s</span>
-                </div>
+                <h3>Pilih Video atau Seret File ke Sini</h3>
+                <p>Mendukung format MP4, WebM, MOV (Maksimal durasi disarankan &lt; 15 detik)</p>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('video-input').click()">
+                  <i class="fa-solid fa-file-video"></i> Buka File Video
+                </button>
               </div>
             </div>
-          </div>
 
-        </div>
-
-      </section>
-
-      <!-- Right Column: Settings, Auto-Calculator, Conversion & TFT Preview -->
-      <section class="panel-section settings-section">
-        
-        <!-- Target Settings Panel -->
-        <div class="card settings-card">
-          <div class="card-header">
-            <h3><i class="fa-solid fa-sliders"></i> 2. Parameter & Target Optimization</h3>
-          </div>
-          
-          <div class="card-body">
-            
-            <!-- Target File Size Input & Presets -->
-            <div class="form-group">
-              <div class="label-with-tooltip">
-                <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
-                <span class="tooltip-info" title="Batas maksimal ukuran file GIF yang diinginkan (misal untuk memori SPIFFS/ESP32)">?</span>
-              </div>
+            <!-- Video Workspace (Hidden initially) -->
+            <div id="workspace" class="workspace hidden">
               
-              <div class="input-with-unit">
-                <input type="number" id="target-size-kb" min="50" max="10000" step="50" value="500">
-                <span class="unit-tag">KB</span>
-              </div>
-
-              <!-- Quick Presets -->
-              <div class="preset-pills">
-                <button type="button" class="preset-btn" data-size="256">256 KB</button>
-                <button type="button" class="preset-btn active" data-size="500">500 KB</button>
-                <button type="button" class="preset-btn" data-size="1024">1 MB (1024 KB)</button>
-                <button type="button" class="preset-btn" data-size="2048">2 MB (2048 KB)</button>
-              </div>
-            </div>
-
-            <!-- Target FPS Input -->
-            <div class="form-group">
-              <div class="label-with-tooltip">
-                <label for="target-fps"><i class="fa-solid fa-gauge-high"></i> Target FPS (Frames Per Second):</label>
-                <span id="fps-display" class="mono-badge">15 FPS</span>
-              </div>
-              <input type="range" id="target-fps" min="5" max="30" step="1" value="15">
-              <div class="range-labels">
-                <span>5 FPS (Hemat)</span>
-                <span>15 FPS (Standar)</span>
-                <span>30 FPS (Halus)</span>
-              </div>
-            </div>
-
-            <!-- Auto-Calculator Live Summary Card -->
-            <div id="calc-summary" class="calc-summary-card">
-              <div class="calc-header">
-                <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Otomatis Sistem</h4>
-                <span id="calc-status-tag" class="status-badge status-success">Optimal</span>
-              </div>
-
-              <div class="calc-grid">
-                <div class="calc-item">
-                  <span class="calc-label">Resolusi Export</span>
-                  <span id="calc-res" class="calc-value mono-highlight">240 x 240 px</span>
-                </div>
-                <div class="calc-item">
-                  <span class="calc-label">Total Frame</span>
-                  <span id="calc-total-frames" class="calc-value mono-highlight">45 Frames</span>
-                </div>
-                <div class="calc-item">
-                  <span class="calc-label">Palet Warna</span>
-                  <span id="calc-colors" class="calc-value mono-highlight">256 Warna</span>
-                </div>
-                <div class="calc-item">
-                  <span class="calc-label">Estimasi Size</span>
-                  <span id="calc-est-size" class="calc-value mono-highlight">~420 KB</span>
+              <div class="workspace-header">
+                <h3><i class="fa-solid fa-crop"></i> 1. WhatsApp-Style 1:1 Crop & Position</h3>
+                <div class="mask-toggle-group">
+                  <button type="button" id="btn-mask-round" class="btn-toggle active" title="Bentuk Layar GC9A01 Bulat">
+                    <i class="fa-regular fa-circle"></i> Bulat 1.28"
+                  </button>
+                  <button type="button" id="btn-mask-square" class="btn-toggle" title="Bentuk Layar Kotak">
+                    <i class="fa-regular fa-square"></i> Kotak 240x240
+                  </button>
                 </div>
               </div>
 
-              <p id="calc-message" class="calc-message">Ukuran GIF diperkirakan aman di bawah target 500 KB.</p>
-            </div>
-
-            <!-- Manual Override Toggle -->
-            <div class="manual-override-container">
-              <label class="toggle-switch">
-                <input type="checkbox" id="chk-manual-override">
-                <span class="slider round"></span>
-              </label>
-              <label for="chk-manual-override" class="toggle-label">Manual Override (Atur Resolusi & Palet Sendiri)</label>
-            </div>
-
-            <!-- Manual Controls (Hidden by default) -->
-            <div id="manual-controls" class="manual-controls hidden">
-              <div class="form-group">
-                <label for="manual-res">Resolusi Export:</label>
-                <select id="manual-res">
-                  <option value="240">240 x 240 px (Full 1:1 Native TFT)</option>
-                  <option value="200">200 x 200 px</option>
-                  <option value="180">180 x 180 px</option>
-                  <option value="160">160 x 160 px</option>
-                  <option value="120">120 x 120 px</option>
-                </select>
+              <!-- Cropper Canvas Container -->
+              <div class="cropper-container">
+                <canvas id="cropper-canvas" width="320" height="320"></canvas>
+                <div class="cropper-hint">
+                  <span><i class="fa-solid fa-hand-pointer"></i> Geser video untuk atur posisi</span>
+                  <span><i class="fa-solid fa-arrow-up-down-left-right"></i> Scroll / Pinch untuk zoom</span>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="manual-colors">Jumlah Warna Palette:</label>
-                <select id="manual-colors">
-                  <option value="256">256 Warna (Kualitas Maksimal)</option>
-                  <option value="128">128 Warna</option>
-                  <option value="64">64 Warna (Ukuran Sedang)</option>
-                  <option value="32">32 Warna (Ukuran Terkecil)</option>
-                </select>
+              <!-- Cropper Toolbar -->
+              <div class="cropper-toolbar">
+                <div class="zoom-control">
+                  <label for="zoom-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom:</label>
+                  <input type="range" id="zoom-slider" min="1.0" max="4.0" step="0.05" value="1.0">
+                  <span id="zoom-value" class="mono-badge">1.0x</span>
+                </div>
+                <div class="cropper-actions">
+                  <button type="button" id="btn-center-crop" class="btn btn-sm btn-secondary" title="Posisikan ke tengah">
+                    <i class="fa-solid fa-crosshairs"></i> Ke Tengah
+                  </button>
+                  <button type="button" id="btn-reset-crop" class="btn btn-sm btn-secondary" title="Reset Zoom & Posisi">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <!-- Generate CTA Button -->
-            <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
-              <i class="fa-solid fa-bolt"></i> Generate GIF untuk TFT 1.28"
-            </button>
+              <video id="source-video" playsinline muted style="display: none;"></video>
 
-            <!-- Conversion Progress Container -->
-            <div id="progress-container" class="progress-container hidden">
-              <div class="progress-info">
-                <span id="progress-status-text">Memproses frame 0 / 45...</span>
-                <span id="progress-percent" class="mono-badge">0%</span>
-              </div>
-              <div class="progress-bar-bg">
-                <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
-              </div>
-            </div>
+              <!-- Video Trimmer -->
+              <div class="trimmer-card">
+                <div class="trimmer-header">
+                  <span><i class="fa-solid fa-scissors"></i> Potong Durasi Clip Video</span>
+                  <span id="video-dur-badge" class="mono-badge">Durasi: 0.0s</span>
+                </div>
+                
+                <div class="trimmer-controls">
+                  <button type="button" id="btn-play-video" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-play"></i> Play
+                  </button>
 
-          </div>
-        </div>
-
-        <!-- TFT 1.28" Hardware Device Simulator & GIF Result Card -->
-        <div id="result-card" class="card result-card hidden">
-          <div class="card-header">
-            <h3><i class="fa-solid fa-tv"></i> Simulated TFT 1.28" Smartwatch Display</h3>
-            <span id="result-size-badge" class="badge badge-success">384 KB</span>
-          </div>
-
-          <div class="card-body">
-            
-            <!-- Hardware TFT Bezel Simulation -->
-            <div class="tft-simulator-frame">
-              <div class="tft-outer-bezel">
-                <div class="tft-inner-ring">
-                  <div class="tft-screen-glass">
-                    <img id="gif-result-img" alt="Hasil GIF TFT 1.28 inch" src="">
-                    <div class="tft-screen-glare"></div>
+                  <div class="trim-inputs">
+                    <div class="trim-input-group">
+                      <label for="trim-start">Mulai (s):</label>
+                      <input type="number" id="trim-start" min="0" step="0.1" value="0.0">
+                    </div>
+                    <div class="trim-input-group">
+                      <label for="trim-end">Selesai (s):</label>
+                      <input type="number" id="trim-end" min="0.1" step="0.1" value="3.0">
+                    </div>
+                    <div class="trim-input-group">
+                      <label>Total Durasi:</label>
+                      <span id="clip-duration" class="mono-highlight">3.0s</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD</div>
+
             </div>
 
-            <!-- Details Table -->
-            <div class="result-details">
-              <div class="detail-row">
-                <span>Ukuran File Akhir:</span>
-                <strong id="res-final-size" class="mono-highlight">0 KB</strong>
+          </section>
+
+          <!-- Right Column: Settings & Calculator (Video) -->
+          <section class="panel-section">
+            
+            <div class="card settings-card">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-sliders"></i> 2. Parameter & Target Optimization</h3>
               </div>
-              <div class="detail-row">
-                <span>Resolusi:</span>
-                <strong id="res-final-resolution">240 x 240 px</strong>
-              </div>
-              <div class="detail-row">
-                <span>Target vs Hasil:</span>
-                <span id="res-final-diff" class="badge badge-info">Aman (-116 KB dari target)</span>
+              
+              <div class="card-body">
+                
+                <div class="form-group">
+                  <div class="label-with-tooltip">
+                    <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
+                    <span class="tooltip-info" title="Batas maksimal ukuran file GIF yang diinginkan">?</span>
+                  </div>
+                  
+                  <div class="input-with-unit">
+                    <input type="number" id="target-size-kb" min="50" max="10000" step="50" value="500">
+                    <span class="unit-tag">KB</span>
+                  </div>
+
+                  <div class="preset-pills">
+                    <button type="button" class="preset-btn" data-size="256">256 KB</button>
+                    <button type="button" class="preset-btn active" data-size="500">500 KB</button>
+                    <button type="button" class="preset-btn" data-size="1024">1 MB (1024 KB)</button>
+                    <button type="button" class="preset-btn" data-size="2048">2 MB (2048 KB)</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <div class="label-with-tooltip">
+                    <label for="target-fps"><i class="fa-solid fa-gauge-high"></i> Target FPS (Frames Per Second):</label>
+                    <span id="fps-display" class="mono-badge">15 FPS</span>
+                  </div>
+                  <input type="range" id="target-fps" min="5" max="30" step="1" value="15">
+                  <div class="range-labels">
+                    <span>5 FPS (Hemat)</span>
+                    <span>15 FPS (Standar)</span>
+                    <span>30 FPS (Halus)</span>
+                  </div>
+                </div>
+
+                <!-- Auto-Calculator Summary Card -->
+                <div id="calc-summary" class="calc-summary-card">
+                  <div class="calc-header">
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Otomatis Sistem</h4>
+                    <span id="calc-status-tag" class="status-badge status-success">Optimal</span>
+                  </div>
+
+                  <div class="calc-grid">
+                    <div class="calc-item">
+                      <span class="calc-label">Resolusi Export</span>
+                      <span id="calc-res" class="calc-value mono-highlight">240 x 240 px</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Total Frame</span>
+                      <span id="calc-total-frames" class="calc-value mono-highlight">45 Frames</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Palet Warna</span>
+                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Estimasi Size</span>
+                      <span id="calc-est-size" class="calc-value mono-highlight">~420 KB</span>
+                    </div>
+                  </div>
+
+                  <p id="calc-message" class="calc-message">Ukuran GIF diperkirakan aman di bawah target 500 KB.</p>
+                </div>
+
+                <div class="manual-override-container">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="chk-manual-override">
+                    <span class="slider round"></span>
+                  </label>
+                  <label for="chk-manual-override" class="toggle-label">Manual Override (Atur Resolusi & Palet)</label>
+                </div>
+
+                <div id="manual-controls" class="manual-controls hidden">
+                  <div class="form-group">
+                    <label for="manual-res">Resolusi Export:</label>
+                    <select id="manual-res">
+                      <option value="240">240 x 240 px (Native 1.28" TFT)</option>
+                      <option value="200">200 x 200 px</option>
+                      <option value="180">180 x 180 px</option>
+                      <option value="160">160 x 160 px</option>
+                      <option value="120">120 x 120 px</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="manual-colors">Jumlah Warna Palette:</label>
+                    <select id="manual-colors">
+                      <option value="256">256 Warna</option>
+                      <option value="128">128 Warna</option>
+                      <option value="64">64 Warna</option>
+                      <option value="32">32 Warna</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
+                  <i class="fa-solid fa-bolt"></i> Generate GIF untuk TFT 1.28"
+                </button>
+
+                <div id="progress-container" class="progress-container hidden">
+                  <div class="progress-info">
+                    <span id="progress-status-text">Memproses frame...</span>
+                    <span id="progress-percent" class="mono-badge">0%</span>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <!-- Export Buttons -->
-            <div class="export-actions">
-              <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="tft_animation_240x240.gif">
-                <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
-              </a>
-              <button type="button" id="btn-toggle-carray" class="btn btn-secondary btn-block">
-                <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
-              </button>
+            <!-- Result Card Video -->
+            <div id="result-card" class="card result-card hidden">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-tv"></i> Simulated TFT 1.28" Display</h3>
+                <span id="result-size-badge" class="badge badge-success">384 KB</span>
+              </div>
+
+              <div class="card-body">
+                <div class="tft-simulator-frame">
+                  <div class="tft-outer-bezel">
+                    <div class="tft-inner-ring">
+                      <div class="tft-screen-glass">
+                        <img id="gif-result-img" alt="Hasil GIF TFT 1.28 inch" src="">
+                        <div class="tft-screen-glare"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD</div>
+                </div>
+
+                <div class="result-details">
+                  <div class="detail-row">
+                    <span>Ukuran File Akhir:</span>
+                    <strong id="res-final-size" class="mono-highlight">0 KB</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Resolusi & FPS:</span>
+                    <strong id="res-final-resolution">240 x 240 px</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Status Target:</span>
+                    <span id="res-final-diff" class="badge badge-info">Aman</span>
+                  </div>
+                </div>
+
+                <div class="export-actions">
+                  <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="tft_animation_240x240.gif">
+                    <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
+                  </a>
+                  <button type="button" id="btn-toggle-carray" class="btn btn-secondary btn-block">
+                    <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
+                  </button>
+                </div>
+
+                <div id="carray-container" class="carray-container hidden">
+                  <div class="carray-header">
+                    <span>C-Array Buffer (`tft_gif_data[]`):</span>
+                    <button type="button" id="btn-copy-carray" class="btn btn-sm btn-outline">
+                      <i class="fa-solid fa-copy"></i> Salin Code
+                    </button>
+                  </div>
+                  <textarea id="carray-text" readonly rows="6"></textarea>
+                </div>
+              </div>
             </div>
 
-            <!-- C-Array Output Box (Hidden by default) -->
-            <div id="carray-container" class="carray-container hidden">
-              <div class="carray-header">
-                <span>C-Array Buffer (`tft_gif_data[]`):</span>
-                <button type="button" id="btn-copy-carray" class="btn btn-sm btn-outline">
-                  <i class="fa-solid fa-copy"></i> Salin Code
+          </section>
+
+        </div>
+      </div>
+
+      <!-- ================= TAB 2: GIF RESIZER & OPTIMIZER ================= -->
+      <div id="tab-gif-resize" class="tab-content">
+        <div class="grid-two-columns">
+          
+          <!-- Left Column: GIF Upload & Interactive Cropper -->
+          <section class="panel-section">
+            
+            <div id="gif-dropzone" class="dropzone">
+              <input type="file" id="gif-file-input" accept="image/gif" hidden>
+              <div class="dropzone-content">
+                <div class="dropzone-icon">
+                  <i class="fa-solid fa-file-image"></i>
+                </div>
+                <h3>Pilih File GIF atau Seret ke Sini</h3>
+                <p>Mendukung file animasi GIF (.gif) untuk di-resize dan dikompresi sesuai Target Size KB</p>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('gif-file-input').click()">
+                  <i class="fa-solid fa-upload"></i> Buka File GIF
                 </button>
               </div>
-              <textarea id="carray-text" readonly rows="6" placeholder="Mengompres byte array C..."></textarea>
             </div>
 
-          </div>
-        </div>
+            <!-- GIF Workspace (Hidden initially) -->
+            <div id="gif-workspace" class="workspace hidden">
+              
+              <div class="workspace-header">
+                <h3><i class="fa-solid fa-crop"></i> WhatsApp-Style GIF Crop & Scale</h3>
+                <div class="mask-toggle-group">
+                  <button type="button" id="gif-btn-mask-round" class="btn-toggle active">
+                    <i class="fa-regular fa-circle"></i> Bulat 1.28"
+                  </button>
+                  <button type="button" id="gif-btn-mask-square" class="btn-toggle">
+                    <i class="fa-regular fa-square"></i> Kotak 240x240
+                  </button>
+                </div>
+              </div>
 
-      </section>
+              <!-- GIF Canvas Cropper -->
+              <div class="cropper-container">
+                <canvas id="gif-cropper-canvas" width="320" height="320"></canvas>
+                <div class="cropper-hint">
+                  <span><i class="fa-solid fa-hand-pointer"></i> Geser GIF untuk posisi</span>
+                  <span><i class="fa-solid fa-magnifying-glass"></i> Zoom untuk potong 1:1</span>
+                </div>
+              </div>
+
+              <!-- GIF Cropper Toolbar -->
+              <div class="cropper-toolbar">
+                <div class="zoom-control">
+                  <label for="gif-zoom-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom:</label>
+                  <input type="range" id="gif-zoom-slider" min="1.0" max="4.0" step="0.05" value="1.0">
+                  <span id="gif-zoom-value" class="mono-badge">1.0x</span>
+                </div>
+                <div class="cropper-actions">
+                  <button type="button" id="gif-btn-center" class="btn btn-sm btn-secondary">
+                    <i class="fa-solid fa-crosshairs"></i> Ke Tengah
+                  </button>
+                  <button type="button" id="gif-btn-reset" class="btn btn-sm btn-secondary">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                  </button>
+                </div>
+              </div>
+
+              <!-- Original GIF Metadata Card -->
+              <div class="card original-gif-meta">
+                <div class="calc-header">
+                  <h4><i class="fa-solid fa-circle-info"></i> Informasi GIF Asli</h4>
+                  <span id="gif-orig-size-badge" class="badge badge-info">0 KB</span>
+                </div>
+                <div class="calc-grid">
+                  <div class="calc-item">
+                    <span class="calc-label">Dimensi Asli</span>
+                    <span id="gif-orig-dim" class="calc-value mono-highlight">0 x 0 px</span>
+                  </div>
+                  <div class="calc-item">
+                    <span class="calc-label">Total Frame</span>
+                    <span id="gif-orig-frames" class="calc-value mono-highlight">0 Frame</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- Right Column: Settings & Calculator (GIF Resize) -->
+          <section class="panel-section">
+            
+            <div class="card settings-card">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-compress"></i> GIF Resizer Target & Settings</h3>
+              </div>
+              
+              <div class="card-body">
+                
+                <div class="form-group">
+                  <div class="label-with-tooltip">
+                    <label for="gif-target-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size Baru:</label>
+                    <span class="tooltip-info" title="Ukuran maksimal file GIF hasil re-compress">?</span>
+                  </div>
+                  
+                  <div class="input-with-unit">
+                    <input type="number" id="gif-target-kb" min="50" max="10000" step="50" value="400">
+                    <span class="unit-tag">KB</span>
+                  </div>
+
+                  <div class="preset-pills">
+                    <button type="button" class="gif-preset-btn" data-size="200">200 KB</button>
+                    <button type="button" class="gif-preset-btn active" data-size="400">400 KB</button>
+                    <button type="button" class="gif-preset-btn" data-size="800">800 KB</button>
+                    <button type="button" class="gif-preset-btn" data-size="1500">1.5 MB</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <div class="label-with-tooltip">
+                    <label for="gif-target-fps"><i class="fa-solid fa-gauge-high"></i> Target FPS / Frame Subsampling:</label>
+                    <span id="gif-fps-display" class="mono-badge">15 FPS</span>
+                  </div>
+                  <input type="range" id="gif-target-fps" min="5" max="30" step="1" value="15">
+                  <div class="range-labels">
+                    <span>5 FPS (Super Kompresi)</span>
+                    <span>15 FPS</span>
+                    <span>30 FPS</span>
+                  </div>
+                </div>
+
+                <!-- GIF Auto-Calc Summary -->
+                <div id="gif-calc-summary" class="calc-summary-card">
+                  <div class="calc-header">
+                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Otomatis Resize</h4>
+                    <span id="gif-calc-status-tag" class="status-badge status-success">Optimal</span>
+                  </div>
+
+                  <div class="calc-grid">
+                    <div class="calc-item">
+                      <span class="calc-label">Resolusi Baru</span>
+                      <span id="gif-calc-res" class="calc-value mono-highlight">240 x 240 px</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Total Frame Out</span>
+                      <span id="gif-calc-frames" class="calc-value mono-highlight">30 Frames</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Warna Palet</span>
+                      <span id="gif-calc-colors" class="calc-value mono-highlight">128 Warna</span>
+                    </div>
+                    <div class="calc-item">
+                      <span class="calc-label">Estimasi Size</span>
+                      <span id="gif-calc-est-size" class="calc-value mono-highlight">~340 KB</span>
+                    </div>
+                  </div>
+
+                  <p id="gif-calc-message" class="calc-message">File GIF akan di-scale dan di-kompresi ke target KB.</p>
+                </div>
+
+                <button type="button" id="btn-resize-gif" class="btn btn-accent btn-block btn-lg" disabled>
+                  <i class="fa-solid fa-compress"></i> Resize & Kompresi GIF untuk TFT 1.28"
+                </button>
+
+                <div id="gif-progress-container" class="progress-container hidden">
+                  <div class="progress-info">
+                    <span id="gif-progress-status-text">Memproses frame GIF...</span>
+                    <span id="gif-progress-percent" class="mono-badge">0%</span>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div id="gif-progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- GIF Result Card -->
+            <div id="gif-result-card" class="card result-card hidden">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-tv"></i> Result Simulated TFT 1.28"</h3>
+                <span id="gif-result-size-badge" class="badge badge-success">320 KB</span>
+              </div>
+
+              <div class="card-body">
+                <div class="tft-simulator-frame">
+                  <div class="tft-outer-bezel">
+                    <div class="tft-inner-ring">
+                      <div class="tft-screen-glass">
+                        <img id="gif-resized-img" alt="Hasil Resize GIF" src="">
+                        <div class="tft-screen-glare"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD</div>
+                </div>
+
+                <div class="result-details">
+                  <div class="detail-row">
+                    <span>Ukuran File Akhir:</span>
+                    <strong id="gif-final-size" class="mono-highlight">0 KB</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Resolusi Hasil:</span>
+                    <strong id="gif-final-resolution">240 x 240 px</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Status Target:</span>
+                    <span id="gif-final-diff" class="badge badge-info">Aman</span>
+                  </div>
+                </div>
+
+                <div class="export-actions">
+                  <a id="btn-download-resized-gif" class="btn btn-primary btn-block btn-lg" download="resized_tft_240x240.gif">
+                    <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
+                  </a>
+                  <button type="button" id="btn-toggle-gif-carray" class="btn btn-secondary btn-block">
+                    <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
+                  </button>
+                </div>
+
+                <div id="gif-carray-container" class="carray-container hidden">
+                  <div class="carray-header">
+                    <span>C-Array Buffer (`tft_gif_data[]`):</span>
+                    <button type="button" id="btn-copy-gif-carray" class="btn btn-sm btn-outline">
+                      <i class="fa-solid fa-copy"></i> Salin Code
+                    </button>
+                  </div>
+                  <textarea id="gif-carray-text" readonly rows="6"></textarea>
+                </div>
+              </div>
+            </div>
+
+          </section>
+
+        </div>
+      </div>
 
     </main>
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Berjalan Langsung di Browser Anda) &bull; Dibuat khusus untuk Display Microcontroller ESP32 / Arduino / Raspberry Pi Pico</p>
+      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Berjalan Langsung di Browser Anda) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
     </footer>
   </div>
 
-  <!-- Offscreen canvas for sampling video frames -->
   <canvas id="render-canvas" width="240" height="240" style="display: none;"></canvas>
 
   <!-- Application Scripts -->
   <script src="js/gif-encoder.js"></script>
+  <script src="js/gif-decoder.js"></script>
   <script src="js/cropper.js"></script>
   <script src="js/calculator.js"></script>
   <script src="js/app.js"></script>
