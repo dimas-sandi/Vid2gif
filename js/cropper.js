@@ -1,7 +1,7 @@
 /**
  * Vid2GIF - WhatsApp Style Interactive Cropper Engine
  * Supports 1:1 square ratio, drag-to-pan, pinch/wheel zoom, center snap, and TFT mask previews.
- * Features Fixed 240x240 Export with Motion Blending for Silky-Smooth Low-FPS Playback.
+ * Features 2-Stage Multi-Pass High-Quality Video Resampler (240x240 FIX) with Motion Blending.
  */
 class VideoCropper {
   constructor(canvasElement, videoElement) {
@@ -29,6 +29,12 @@ class VideoCropper {
     // Touch gesture tracking
     this.initialPinchDistance = null;
     this.initialZoomOnPinch = 1.0;
+
+    // Intermediate Canvas for 2-Stage Step-Down Resampling (eliminates aliasing & moiré)
+    this.intCanvas = document.createElement('canvas');
+    this.intCanvas.width = 480;
+    this.intCanvas.height = 480;
+    this.intCtx = this.intCanvas.getContext('2d');
 
     // Motion blend cache
     this.prevImageData = null;
@@ -274,47 +280,57 @@ class VideoCropper {
   }
 
   /**
-   * Render frame directly onto 240x240 target canvas with optional Motion Blending for smooth low-FPS playback
+   * 2-Stage Step-Down Video Resampler:
+   * Step 1: Render video to 480x480 intermediate canvas (preserves sharp details, eliminates 4K aliasing)
+   * Step 2: Render 480x480 to final 240x240 target canvas with high-quality Lanczos-style smoothing
    */
   exportFrameToCanvas(targetCanvas, enableMotionBlend = true, blendFactor = 0.22) {
     const tw = targetCanvas.width;
     const th = targetCanvas.height;
     const tctx = targetCanvas.getContext('2d');
 
-    tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = 'high';
-
-    tctx.clearRect(0, 0, tw, th);
-    tctx.fillStyle = '#000000';
-    tctx.fillRect(0, 0, tw, th);
-
     if (!this.video) return;
-
     const vw = this.video.videoWidth || this.video.width;
     const vh = this.video.videoHeight || this.video.height;
     if (!vw || !vh) return;
 
-    const aspect = vw / vh;
+    // --- STAGE 1: Render to Intermediate 480x480 Canvas ---
+    const iw = 480;
+    const ih = 480;
+    const ictx = this.intCtx;
 
+    ictx.imageSmoothingEnabled = true;
+    ictx.imageSmoothingQuality = 'high';
+    ictx.clearRect(0, 0, iw, ih);
+    ictx.fillStyle = '#000000';
+    ictx.fillRect(0, 0, iw, ih);
+
+    const aspect = vw / vh;
     let baseW, baseH;
     if (aspect >= 1) {
-      baseH = th;
+      baseH = ih;
       baseW = baseH * aspect;
     } else {
-      baseW = tw;
+      baseW = iw;
       baseH = baseW / aspect;
     }
 
     const scaledW = baseW * this.zoom;
     const scaledH = baseH * this.zoom;
 
-    const scaleRatio = tw / this.canvas.width;
-    const drawX = (tw - scaledW) / 2 + (this.panX * scaleRatio);
-    const drawY = (th - scaledH) / 2 + (this.panY * scaleRatio);
+    const scaleRatio = iw / this.canvas.width;
+    const drawX = (iw - scaledW) / 2 + (this.panX * scaleRatio);
+    const drawY = (ih - scaledH) / 2 + (this.panY * scaleRatio);
 
-    tctx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
+    ictx.drawImage(this.video, drawX, drawY, scaledW, scaledH);
 
-    // Apply Motion Blending for low FPS smooth motion effect
+    // --- STAGE 2: Render 480x480 Intermediate Canvas to 240x240 Target Canvas ---
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'high';
+    tctx.clearRect(0, 0, tw, th);
+    tctx.drawImage(this.intCanvas, 0, 0, iw, ih, 0, 0, tw, th);
+
+    // Apply Motion Blending for low-FPS smooth motion
     if (enableMotionBlend) {
       const currImageData = tctx.getImageData(0, 0, tw, th);
       const curr = currImageData.data;

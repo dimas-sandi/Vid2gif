@@ -1,6 +1,6 @@
 /**
  * Vid2GIF - Pure Client-side High-Definition GIF Encoder Engine
- * Features NeuQuant Color Quantization with Floyd-Steinberg Dithering for crystal-clear, razor-sharp output.
+ * Features NeuQuant Color Quantization (100% Pixel Sample Rate) with Floyd-Steinberg Dithering for crystal-clear output.
  */
 
 // --- NeuQuant Color Quantizer ---
@@ -239,7 +239,7 @@ class GIFEncoder {
     this.delay = 10;
     this.repeat = 0;
     this.colorCount = 256;
-    this.useDither = true; // Enable sharp Floyd-Steinberg dithering
+    this.useDither = true;
   }
 
   setDelay(ms) {
@@ -294,8 +294,8 @@ class GIFEncoder {
     this.out.push(0);
   }
 
-  addFrame(pixels, sampleInterval = 10) {
-    // Train palette using NeuQuant on crisp raw pixels (zero blur!)
+  addFrame(pixels, sampleInterval = 1) {
+    // Train palette using NeuQuant on crisp raw pixels with 100% pixel sample rate (sampleInterval = 1)
     const nq = new NeuQuant(pixels, sampleInterval, this.colorCount);
     nq.learn();
     nq.setUpArrays();
@@ -336,7 +336,6 @@ class GIFEncoder {
           const errG = g - paletteG;
           const errR = r - paletteR;
 
-          // Propagate error to neighboring pixels (Floyd-Steinberg coefficients)
           bErr[errIdx + 1] += errB * (7 / 16);
           gErr[errIdx + 1] += errG * (7 / 16);
           rErr[errIdx + 1] += errR * (7 / 16);
@@ -355,7 +354,6 @@ class GIFEncoder {
         }
       }
     } else {
-      // Direct quantization without dithering
       let k = 0;
       for (let i = 0; i < pixels.length; i += 4) {
         let b = pixels[i];
