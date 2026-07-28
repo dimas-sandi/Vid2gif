@@ -3,103 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vid2GIF - Ezgif-Style HD Converter TFT 1.28" (240x240 BiLED ESP32-C3)</title>
-  <meta name="description" content="Konverter video ke GIF statis khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) BiLED_Eye_ESP32C3 dengan 256-color HD quantization dan export animation.h.">
+  <title>DMZ Eye Animator — Custom Animasi untuk DMZ Dual Eye ESP32-C3</title>
+  <meta name="description" content="Buat animasi GIF kustom untuk modul DMZ Dual Eye ESP32-C3 BiLED Controller. Konversi video apa saja menjadi animasi mata GIF 240×240 yang siap diupload ke modul Anda.">
   
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <!-- FontAwesome Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <!-- Gifshot HD GIF Library CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
-  
-  <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="app-wrapper">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="logo-container">
-        <div class="tft-icon-badge">
-          <i class="fa-solid fa-microchip"></i>
+
+    <!-- ====== HERO HEADER ====== -->
+    <header class="hero-header">
+      <div class="hero-top-bar">
+        <div class="brand">
+          <div class="brand-icon">
+            <i class="fa-solid fa-eye"></i>
+          </div>
+          <div>
+            <h1>DMZ Eye <span class="accent">Animator</span></h1>
+            <p class="brand-tagline">Custom Animation Tool untuk Modul DMZ Dual Eye ESP32-C3</p>
+          </div>
         </div>
-        <div>
-          <h1>Vid2GIF <span class="tft-tag">240x240 HD</span></h1>
-          <p class="subtitle">Konverter Video ke GIF TFT 1.28" (Khusus BiLED Controller Module ESP32-C3)</p>
+        <div class="hero-actions">
+          <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" class="btn btn-ghost">
+            <i class="fa-brands fa-github"></i> GitHub
+          </a>
         </div>
       </div>
-      <div class="header-actions">
-        <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" id="github-link" class="btn btn-outline">
-          <i class="fa-brands fa-github"></i> Repositori GitHub
-        </a>
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Buat Animasi Mata Kustom untuk Modul Anda</h2>
+          <p>Konversi video atau GIF apa saja menjadi animasi 240×240 yang siap diupload ke modul <strong>DMZ Dual Eye ESP32-C3</strong> via WiFi. Cukup pilih video, atur crop, dan download — lalu upload ke modul melalui <code>http://192.168.4.1</code>.</p>
+        </div>
+        <div class="hero-specs">
+          <div class="spec-chip"><i class="fa-solid fa-display"></i> GC9A01A 1.28" TFT Bulat</div>
+          <div class="spec-chip"><i class="fa-solid fa-expand"></i> 240 × 240 px</div>
+          <div class="spec-chip"><i class="fa-solid fa-microchip"></i> ESP32-C3</div>
+          <div class="spec-chip"><i class="fa-solid fa-wifi"></i> Upload via WiFi AP</div>
+          <div class="spec-chip"><i class="fa-solid fa-palette"></i> GIF89a 32-128 Warna</div>
+          <div class="spec-chip"><i class="fa-solid fa-gauge-high"></i> 8-15 FPS</div>
+        </div>
       </div>
     </header>
 
-    <!-- Top Navigation Tabs -->
+    <!-- ====== NAVIGATION ====== -->
     <nav class="navigation-tabs">
       <button type="button" class="tab-btn active" data-tab="tab-video">
-        <i class="fa-solid fa-file-video"></i> Video ke GIF TFT 240x240 HD
+        <i class="fa-solid fa-film"></i> Video → Animasi Mata
       </button>
       <button type="button" class="tab-btn" data-tab="tab-gif-resize">
-        <i class="fa-solid fa-file-image"></i> GIF Resizer 240x240 (Target Size)
+        <i class="fa-solid fa-image"></i> Resize GIF → 240×240
+      </button>
+      <button type="button" class="tab-btn" data-tab="tab-guide">
+        <i class="fa-solid fa-book"></i> Panduan Upload ke Modul
       </button>
     </nav>
 
-    <!-- Main Content Layout -->
     <main class="main-content">
-      
-      <!-- ================= TAB 1: VIDEO TO GIF ================= -->
+
+      <!-- =============== TAB 1: VIDEO → ANIMASI MATA =============== -->
       <div id="tab-video" class="tab-content active">
         <div class="grid-two-columns">
           
-          <!-- Left Column: Video Dropzone & Interactive Cropper -->
+          <!-- Left: Video Upload & Cropper -->
           <section class="panel-section">
-            
+
             <div id="dropzone" class="dropzone">
               <input type="file" id="video-input" accept="video/mp4,video/webm,video/ogg,video/mov,video/*" hidden>
               <div class="dropzone-content">
-                <div class="dropzone-icon">
-                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                <div class="dropzone-icon pulse-glow">
+                  <i class="fa-solid fa-eye"></i>
                 </div>
-                <h3>Pilih Video atau Seret File ke Sini</h3>
-                <p>Mendukung format MP4, WebM, MOV (Ezgif-Style 256-Color HD Palette)</p>
+                <h3>Pilih Video Animasi Mata</h3>
+                <p>Seret file video ke sini, atau klik tombol di bawah.<br>Mendukung MP4, WebM, MOV — durasi & resolusi bebas.</p>
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('video-input').click()">
-                  <i class="fa-solid fa-file-video"></i> Buka File Video
+                  <i class="fa-solid fa-folder-open"></i> Pilih Video dari Perangkat
                 </button>
+                <div class="dropzone-hint">
+                  <i class="fa-solid fa-circle-info"></i> Cari video animasi mata (Sharingan, Rinnegan, dll.) di YouTube atau TikTok, lalu konversi di sini.
+                </div>
               </div>
             </div>
 
-            <!-- Video Workspace (Hidden initially) -->
             <div id="workspace" class="workspace hidden">
               
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> 1:1 Crop & Position (240x240 FIX)</h3>
+                <h3><i class="fa-solid fa-crop-simple"></i> Atur Posisi & Crop Mata</h3>
                 <div class="mask-toggle-group">
-                  <button type="button" id="btn-mask-round" class="btn-toggle active" title="Bentuk Layar GC9A01 Bulat">
-                    <i class="fa-regular fa-circle"></i> Bulat 1.28"
+                  <button type="button" id="btn-mask-round" class="btn-toggle active" title="TFT GC9A01A Bulat">
+                    <i class="fa-regular fa-circle"></i> Bulat (GC9A01A)
                   </button>
-                  <button type="button" id="btn-mask-square" class="btn-toggle" title="Bentuk Layar Kotak">
-                    <i class="fa-regular fa-square"></i> Kotak 240x240
+                  <button type="button" id="btn-mask-square" class="btn-toggle" title="TFT Kotak">
+                    <i class="fa-regular fa-square"></i> Kotak
                   </button>
                 </div>
               </div>
 
-              <!-- Cropper Canvas Container -->
               <div class="cropper-container">
                 <canvas id="cropper-canvas" width="320" height="320"></canvas>
                 <div class="cropper-hint">
-                  <span><i class="fa-solid fa-hand-pointer"></i> Geser video untuk atur posisi</span>
-                  <span><i class="fa-solid fa-arrow-up-down-left-right"></i> Scroll / Pinch untuk zoom</span>
+                  <span><i class="fa-solid fa-hand-pointer"></i> Geser untuk posisi mata</span>
+                  <span><i class="fa-solid fa-magnifying-glass-plus"></i> Scroll / Pinch untuk zoom</span>
                 </div>
               </div>
 
-              <!-- Cropper Toolbar -->
               <div class="cropper-toolbar">
                 <div class="zoom-control">
                   <label for="zoom-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom:</label>
@@ -107,29 +118,22 @@
                   <span id="zoom-value" class="mono-badge">1.0x</span>
                 </div>
                 <div class="cropper-actions">
-                  <button type="button" id="btn-center-crop" class="btn btn-sm btn-secondary" title="Posisikan ke tengah">
-                    <i class="fa-solid fa-crosshairs"></i> Ke Tengah
-                  </button>
-                  <button type="button" id="btn-reset-crop" class="btn btn-sm btn-secondary" title="Reset Zoom & Posisi">
-                    <i class="fa-solid fa-rotate-left"></i> Reset
-                  </button>
+                  <button type="button" id="btn-center-crop" class="btn btn-sm btn-secondary"><i class="fa-solid fa-crosshairs"></i> Tengah</button>
+                  <button type="button" id="btn-reset-crop" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate-left"></i> Reset</button>
                 </div>
               </div>
 
               <video id="source-video" playsinline muted style="display: none;"></video>
 
-              <!-- Video Trimmer -->
               <div class="trimmer-card">
                 <div class="trimmer-header">
-                  <span><i class="fa-solid fa-scissors"></i> Potong Durasi Clip Video</span>
+                  <span><i class="fa-solid fa-scissors"></i> Potong Durasi Animasi</span>
                   <span id="video-dur-badge" class="mono-badge">Durasi: 0.0s</span>
                 </div>
-                
                 <div class="trimmer-controls">
                   <button type="button" id="btn-play-video" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-play"></i> Play
                   </button>
-
                   <div class="trim-inputs">
                     <div class="trim-input-group">
                       <label for="trim-start">Mulai (s):</label>
@@ -140,7 +144,7 @@
                       <input type="number" id="trim-end" min="0.1" step="0.1" value="3.0">
                     </div>
                     <div class="trim-input-group">
-                      <label>Total Durasi:</label>
+                      <label>Durasi Clip:</label>
                       <span id="clip-duration" class="mono-highlight">3.0s</span>
                     </div>
                   </div>
@@ -148,73 +152,94 @@
               </div>
 
             </div>
-
           </section>
 
-          <!-- Right Column: Settings & Calculator (Video) -->
+          <!-- Right: Settings & Output -->
           <section class="panel-section">
             
             <div class="card settings-card">
               <div class="card-header">
-                <h3><i class="fa-solid fa-sliders"></i> Target Size & Auto FPS Engine</h3>
+                <h3><i class="fa-solid fa-sliders"></i> Pengaturan Animasi</h3>
               </div>
-              
               <div class="card-body">
-                
+
+                <!-- Eye Side Selector -->
+                <div class="form-group">
+                  <label><i class="fa-solid fa-eye"></i> Untuk Mata:</label>
+                  <div class="eye-selector">
+                    <button type="button" class="eye-btn active" data-prefix="L">
+                      <i class="fa-solid fa-arrow-left"></i> Kiri (L_)
+                    </button>
+                    <button type="button" class="eye-btn" data-prefix="R">
+                      <i class="fa-solid fa-arrow-right"></i> Kanan (R_)
+                    </button>
+                    <button type="button" class="eye-btn" data-prefix="U">
+                      <i class="fa-solid fa-arrows-left-right"></i> Universal (U_)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Filename -->
+                <div class="form-group">
+                  <label for="gif-filename"><i class="fa-solid fa-file-signature"></i> Nama File GIF:</label>
+                  <div class="input-with-unit">
+                    <input type="text" id="gif-filename" value="L_custom" placeholder="L_custom">
+                    <span class="unit-tag">.gif</span>
+                  </div>
+                  <small class="form-hint">Prefix otomatis: L_ (kiri), R_ (kanan), U_ (universal).</small>
+                </div>
+
+                <!-- Target File Size -->
                 <div class="form-group">
                   <div class="label-with-tooltip">
-                    <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size GIF:</label>
-                    <span class="tooltip-info" title="Ukuran maksimal file GIF (FPS terkalkulasi otomatis agar muat)">?</span>
+                    <label for="target-size-kb"><i class="fa-solid fa-weight-hanging"></i> Target Ukuran File:</label>
+                    <span class="tooltip-info" title="Sesuaikan dengan 'Maks upload baru' yang tampil di web konfigurasi modul (http://192.168.4.1). Partisi GIF total ~1.8 MB.">?</span>
                   </div>
-                  
                   <div class="input-with-unit">
-                    <input type="number" id="target-size-kb" min="50" max="10000" step="50" value="500">
+                    <input type="number" id="target-size-kb" min="50" max="1800" step="50" value="500">
                     <span class="unit-tag">KB</span>
                   </div>
-
                   <div class="preset-pills">
                     <button type="button" class="preset-btn" data-size="256">256 KB</button>
                     <button type="button" class="preset-btn active" data-size="500">500 KB</button>
-                    <button type="button" class="preset-btn" data-size="1024">1 MB (1024 KB)</button>
-                    <button type="button" class="preset-btn" data-size="2048">2 MB (2048 KB)</button>
+                    <button type="button" class="preset-btn" data-size="800">800 KB</button>
+                    <button type="button" class="preset-btn" data-size="1500">1.5 MB</button>
+                  </div>
+                  <div class="flash-info-banner">
+                    <i class="fa-solid fa-hard-drive"></i>
+                    <span>Partisi GIF modul: <strong>~1.8 MB</strong> total. Cek sisa ruang di <code>http://192.168.4.1</code> sebelum membuat animasi baru.</span>
                   </div>
                 </div>
 
-                <!-- Auto-Calculator Summary Card -->
-                <div id="calc-summary" class="calc-summary-card">
+                <!-- Auto Calc Summary -->
+                <div class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif Ezgif-Style</h4>
-                    <span id="calc-status-tag" class="status-badge status-success">256 Warna HD</span>
+                    <h4><i class="fa-solid fa-calculator"></i> Kalkulasi Otomatis</h4>
+                    <span id="calc-status-tag" class="status-badge status-success">OK</span>
                   </div>
-
                   <div class="calc-grid">
                     <div class="calc-item">
-                      <span class="calc-label">Resolusi Export</span>
-                      <span id="calc-res" class="calc-value mono-highlight">240 x 240 px (FIX HD)</span>
+                      <span class="calc-label">Resolusi</span>
+                      <span id="calc-res" class="calc-value mono-highlight">240 × 240 px</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Calculated FPS</span>
-                      <span id="calc-total-frames" class="calc-value mono-highlight">15 FPS (45 Frames)</span>
+                      <span class="calc-label">FPS & Frame</span>
+                      <span id="calc-total-frames" class="calc-value mono-highlight">15 FPS (45 Frame)</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Palet Warna</span>
-                      <span id="calc-colors" class="calc-value mono-highlight">256 Warna Ezgif HD</span>
+                      <span class="calc-label">Warna Palet</span>
+                      <span id="calc-colors" class="calc-value mono-highlight">128 Warna</span>
                     </div>
                     <div class="calc-item">
-                      <span class="calc-label">Estimasi Size</span>
+                      <span class="calc-label">Est. Ukuran</span>
                       <span id="calc-est-size" class="calc-value mono-highlight">~420 KB</span>
                     </div>
                   </div>
-
-                  <p id="calc-message" class="calc-message">Kualitas Ezgif 256 Warna HD. FPS terkalkulasi otomatis.</p>
-                </div>
-
-                <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Optimized for ESP32-C3 BiLED Controller Module</strong>
+                  <p id="calc-message" class="calc-message">FPS dan warna dihitung otomatis agar muat di target ukuran.</p>
                 </div>
 
                 <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
-                  <i class="fa-solid fa-bolt"></i> Generate GIF 240x240 HD (Target KB)
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Buat Animasi Mata GIF
                 </button>
 
                 <div id="progress-container" class="progress-container hidden">
@@ -223,123 +248,117 @@
                     <span id="progress-percent" class="mono-badge">0%</span>
                   </div>
                   <div class="progress-bar-bg">
-                    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
                   </div>
                 </div>
 
               </div>
             </div>
 
-            <!-- Result Card Video -->
+            <!-- Result Card -->
             <div id="result-card" class="card result-card hidden">
               <div class="card-header">
-                <h3><i class="fa-solid fa-tv"></i> Simulated TFT 1.28" Display</h3>
+                <h3><i class="fa-solid fa-check-circle"></i> Animasi Siap!</h3>
                 <span id="result-size-badge" class="badge badge-success">384 KB</span>
               </div>
-
               <div class="card-body">
-                <div class="tft-simulator-frame">
-                  <div class="tft-outer-bezel">
-                    <div class="tft-inner-ring">
-                      <div class="tft-screen-glass">
-                        <img id="gif-result-img" alt="Hasil GIF TFT 1.28 inch" src="">
-                        <div class="tft-screen-glare"></div>
-                      </div>
+
+                <div class="dual-eye-preview">
+                  <div class="eye-preview-unit">
+                    <div class="tft-bezel-round">
+                      <img id="gif-result-img" alt="Animasi Mata" src="">
+                      <div class="tft-glare"></div>
                     </div>
+                    <span class="eye-label" id="eye-label-preview">Mata Kiri</span>
                   </div>
-                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD (ESP32-C3)</div>
+                  <div class="eye-preview-unit mirrored">
+                    <div class="tft-bezel-round">
+                      <img id="gif-result-mirror" alt="Mirror" src="">
+                      <div class="tft-glare"></div>
+                    </div>
+                    <span class="eye-label">Mirror Preview</span>
+                  </div>
                 </div>
 
                 <div class="result-details">
                   <div class="detail-row">
-                    <span>Ukuran File Akhir:</span>
+                    <span>Ukuran File:</span>
                     <strong id="res-final-size" class="mono-highlight">0 KB</strong>
                   </div>
                   <div class="detail-row">
                     <span>Resolusi & FPS:</span>
-                    <strong id="res-final-resolution">240 x 240 px (FIX HD)</strong>
+                    <strong id="res-final-resolution">240×240</strong>
                   </div>
                   <div class="detail-row">
-                    <span>Status Target:</span>
-                    <span id="res-final-diff" class="badge badge-info">Aman</span>
+                    <span>Nama File:</span>
+                    <strong id="res-final-filename" class="mono-highlight">L_custom.gif</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Status:</span>
+                    <span id="res-final-diff" class="badge badge-success">Siap Upload</span>
                   </div>
                 </div>
 
                 <div class="export-actions">
-                  <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="animation_240x240.gif">
-                    <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
+                  <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="L_custom.gif">
+                    <i class="fa-solid fa-download"></i> Download GIF — Siap Upload ke Modul
                   </a>
-                  <button type="button" id="btn-download-header" class="btn btn-accent btn-block btn-lg">
-                    <i class="fa-solid fa-file-code"></i> Unduh `animation.h` (ESP32-C3)
-                  </button>
-                  <button type="button" id="btn-toggle-carray" class="btn btn-secondary btn-block">
-                    <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
-                  </button>
                 </div>
 
-                <div id="carray-container" class="carray-container hidden">
-                  <div class="carray-header">
-                    <span>C-Array Buffer (`biled_animation_data[]`):</span>
-                    <button type="button" id="btn-copy-carray" class="btn btn-sm btn-outline">
-                      <i class="fa-solid fa-copy"></i> Salin Code
-                    </button>
+                <div class="upload-reminder">
+                  <i class="fa-solid fa-wifi"></i>
+                  <div>
+                    <strong>Cara Upload ke Modul:</strong>
+                    <ol>
+                      <li>Hubungkan ke WiFi <code>DMZ-Eye-Setup</code> (password: <code>dmzeye123</code>)</li>
+                      <li>Buka <code>http://192.168.4.1</code> di browser</li>
+                      <li>Upload file GIF ini melalui halaman upload di web modul</li>
+                      <li>Pilih GIF baru di editor mata kiri/kanan, lalu simpan</li>
+                    </ol>
                   </div>
-                  <textarea id="carray-text" readonly rows="6"></textarea>
                 </div>
+
               </div>
             </div>
 
           </section>
-
         </div>
       </div>
 
-      <!-- ================= TAB 2: GIF RESIZER & OPTIMIZER ================= -->
+      <!-- =============== TAB 2: GIF RESIZER =============== -->
       <div id="tab-gif-resize" class="tab-content">
         <div class="grid-two-columns">
           
-          <!-- Left Column: GIF Upload & Interactive Cropper -->
           <section class="panel-section">
-            
             <div id="gif-dropzone" class="dropzone">
               <input type="file" id="gif-file-input" accept="image/gif" hidden>
               <div class="dropzone-content">
-                <div class="dropzone-icon">
-                  <i class="fa-solid fa-file-image"></i>
+                <div class="dropzone-icon pulse-glow">
+                  <i class="fa-solid fa-image"></i>
                 </div>
-                <h3>Pilih File GIF atau Seret ke Sini</h3>
-                <p>Resize ke FIX 240x240 px dan kompresi sesuai Target Size KB</p>
+                <h3>Pilih File GIF untuk Resize</h3>
+                <p>GIF animasi akan di-resize menjadi tepat 240×240 px<br>dan dikompresi agar muat di flash modul.</p>
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('gif-file-input').click()">
-                  <i class="fa-solid fa-upload"></i> Buka File GIF
+                  <i class="fa-solid fa-upload"></i> Pilih File GIF
                 </button>
               </div>
             </div>
 
-            <!-- GIF Workspace (Hidden initially) -->
             <div id="gif-workspace" class="workspace hidden">
-              
               <div class="workspace-header">
-                <h3><i class="fa-solid fa-crop"></i> GIF Crop & Scale (240x240 HD)</h3>
+                <h3><i class="fa-solid fa-crop-simple"></i> Crop & Scale GIF</h3>
                 <div class="mask-toggle-group">
-                  <button type="button" id="gif-btn-mask-round" class="btn-toggle active">
-                    <i class="fa-regular fa-circle"></i> Bulat 1.28"
-                  </button>
-                  <button type="button" id="gif-btn-mask-square" class="btn-toggle">
-                    <i class="fa-regular fa-square"></i> Kotak 240x240
-                  </button>
+                  <button type="button" id="gif-btn-mask-round" class="btn-toggle active"><i class="fa-regular fa-circle"></i> Bulat</button>
+                  <button type="button" id="gif-btn-mask-square" class="btn-toggle"><i class="fa-regular fa-square"></i> Kotak</button>
                 </div>
               </div>
-
-              <!-- GIF Canvas Cropper -->
               <div class="cropper-container">
                 <canvas id="gif-cropper-canvas" width="320" height="320"></canvas>
                 <div class="cropper-hint">
-                  <span><i class="fa-solid fa-hand-pointer"></i> Geser GIF untuk posisi</span>
-                  <span><i class="fa-solid fa-magnifying-glass"></i> Zoom untuk potong 1:1</span>
+                  <span><i class="fa-solid fa-hand-pointer"></i> Geser GIF</span>
+                  <span><i class="fa-solid fa-magnifying-glass"></i> Zoom</span>
                 </div>
               </div>
-
-              <!-- GIF Cropper Toolbar -->
               <div class="cropper-toolbar">
                 <div class="zoom-control">
                   <label for="gif-zoom-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Zoom:</label>
@@ -347,58 +366,62 @@
                   <span id="gif-zoom-value" class="mono-badge">1.0x</span>
                 </div>
                 <div class="cropper-actions">
-                  <button type="button" id="gif-btn-center" class="btn btn-sm btn-secondary">
-                    <i class="fa-solid fa-crosshairs"></i> Ke Tengah
-                  </button>
-                  <button type="button" id="gif-btn-reset" class="btn btn-sm btn-secondary">
-                    <i class="fa-solid fa-rotate-left"></i> Reset
-                  </button>
+                  <button type="button" id="gif-btn-center" class="btn btn-sm btn-secondary"><i class="fa-solid fa-crosshairs"></i> Tengah</button>
+                  <button type="button" id="gif-btn-reset" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate-left"></i> Reset</button>
                 </div>
               </div>
-
-              <!-- Original GIF Metadata Card -->
               <div class="card original-gif-meta">
                 <div class="calc-header">
-                  <h4><i class="fa-solid fa-circle-info"></i> Informasi GIF Asli</h4>
+                  <h4><i class="fa-solid fa-circle-info"></i> Info GIF Asli</h4>
                   <span id="gif-orig-size-badge" class="badge badge-info">0 KB</span>
                 </div>
                 <div class="calc-grid">
                   <div class="calc-item">
-                    <span class="calc-label">Dimensi Asli</span>
-                    <span id="gif-orig-dim" class="calc-value mono-highlight">0 x 0 px</span>
+                    <span class="calc-label">Dimensi</span>
+                    <span id="gif-orig-dim" class="calc-value mono-highlight">0 × 0</span>
                   </div>
                   <div class="calc-item">
-                    <span class="calc-label">Total Frame</span>
-                    <span id="gif-orig-frames" class="calc-value mono-highlight">0 Frame</span>
+                    <span class="calc-label">Frame</span>
+                    <span id="gif-orig-frames" class="calc-value mono-highlight">0</span>
                   </div>
                 </div>
               </div>
-
             </div>
-
           </section>
 
-          <!-- Right Column: Settings & Calculator (GIF Resize) -->
           <section class="panel-section">
-            
             <div class="card settings-card">
               <div class="card-header">
-                <h3><i class="fa-solid fa-compress"></i> GIF Resizer 240x240 (Target KB)</h3>
+                <h3><i class="fa-solid fa-compress"></i> Resize ke 240×240</h3>
               </div>
-              
               <div class="card-body">
-                
+
+                <div class="form-group">
+                  <label><i class="fa-solid fa-eye"></i> Untuk Mata:</label>
+                  <div class="eye-selector">
+                    <button type="button" class="gif-eye-btn active" data-prefix="L"><i class="fa-solid fa-arrow-left"></i> Kiri (L_)</button>
+                    <button type="button" class="gif-eye-btn" data-prefix="R"><i class="fa-solid fa-arrow-right"></i> Kanan (R_)</button>
+                    <button type="button" class="gif-eye-btn" data-prefix="U"><i class="fa-solid fa-arrows-left-right"></i> Universal (U_)</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="gif-resize-filename"><i class="fa-solid fa-file-signature"></i> Nama File:</label>
+                  <div class="input-with-unit">
+                    <input type="text" id="gif-resize-filename" value="L_custom" placeholder="L_custom">
+                    <span class="unit-tag">.gif</span>
+                  </div>
+                </div>
+
                 <div class="form-group">
                   <div class="label-with-tooltip">
-                    <label for="gif-target-kb"><i class="fa-solid fa-weight-hanging"></i> Target File Size Baru:</label>
-                    <span class="tooltip-info" title="Ukuran maksimal file GIF hasil re-compress">?</span>
+                    <label for="gif-target-kb"><i class="fa-solid fa-weight-hanging"></i> Target Ukuran:</label>
+                    <span class="tooltip-info" title="Sesuaikan dengan sisa ruang flash di modul">?</span>
                   </div>
-                  
                   <div class="input-with-unit">
-                    <input type="number" id="gif-target-kb" min="50" max="10000" step="50" value="400">
+                    <input type="number" id="gif-target-kb" min="50" max="1800" step="50" value="400">
                     <span class="unit-tag">KB</span>
                   </div>
-
                   <div class="preset-pills">
                     <button type="button" class="gif-preset-btn" data-size="200">200 KB</button>
                     <button type="button" class="gif-preset-btn active" data-size="400">400 KB</button>
@@ -407,131 +430,161 @@
                   </div>
                 </div>
 
-                <!-- GIF Auto-Calc Summary -->
-                <div id="gif-calc-summary" class="calc-summary-card">
+                <div class="calc-summary-card">
                   <div class="calc-header">
-                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Kalkulasi Adaptif Ezgif-Style</h4>
-                    <span id="gif-calc-status-tag" class="status-badge status-success">256 Warna HD</span>
+                    <h4><i class="fa-solid fa-calculator"></i> Kalkulasi Otomatis</h4>
+                    <span id="gif-calc-status-tag" class="status-badge status-success">OK</span>
                   </div>
-
                   <div class="calc-grid">
-                    <div class="calc-item">
-                      <span class="calc-label">Resolusi Export</span>
-                      <span id="gif-calc-res" class="calc-value mono-highlight">240 x 240 px (FIX HD)</span>
-                    </div>
-                    <div class="calc-item">
-                      <span class="calc-label">Auto FPS</span>
-                      <span id="gif-calc-frames" class="calc-value mono-highlight">15 FPS</span>
-                    </div>
-                    <div class="calc-item">
-                      <span class="calc-label">Warna Palet</span>
-                      <span id="gif-calc-colors" class="calc-value mono-highlight">256 Warna HD</span>
-                    </div>
-                    <div class="calc-item">
-                      <span class="calc-label">Estimasi Size</span>
-                      <span id="gif-calc-est-size" class="calc-value mono-highlight">~340 KB</span>
-                    </div>
+                    <div class="calc-item"><span class="calc-label">Resolusi</span><span id="gif-calc-res" class="calc-value mono-highlight">240 × 240 px</span></div>
+                    <div class="calc-item"><span class="calc-label">FPS</span><span id="gif-calc-frames" class="calc-value mono-highlight">15 FPS</span></div>
+                    <div class="calc-item"><span class="calc-label">Warna</span><span id="gif-calc-colors" class="calc-value mono-highlight">128</span></div>
+                    <div class="calc-item"><span class="calc-label">Est. Ukuran</span><span id="gif-calc-est-size" class="calc-value mono-highlight">~340 KB</span></div>
                   </div>
-
-                  <p id="gif-calc-message" class="calc-message">Export FIX 240x240 px. FPS terkalkulasi otomatis.</p>
-                </div>
-
-                <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Optimized for ESP32-C3 BiLED Controller Module</strong>
+                  <p id="gif-calc-message" class="calc-message">FPS dihitung otomatis agar muat target.</p>
                 </div>
 
                 <button type="button" id="btn-resize-gif" class="btn btn-accent btn-block btn-lg" disabled>
-                  <i class="fa-solid fa-compress"></i> Resize GIF ke 240x240 HD (Target KB)
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Resize & Kompresi GIF
                 </button>
 
                 <div id="gif-progress-container" class="progress-container hidden">
                   <div class="progress-info">
-                    <span id="gif-progress-status-text">Memproses frame GIF...</span>
+                    <span id="gif-progress-status-text">Memproses...</span>
                     <span id="gif-progress-percent" class="mono-badge">0%</span>
                   </div>
                   <div class="progress-bar-bg">
-                    <div id="gif-progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    <div id="gif-progress-bar-fill" class="progress-bar-fill"></div>
                   </div>
                 </div>
-
               </div>
             </div>
 
-            <!-- GIF Result Card -->
             <div id="gif-result-card" class="card result-card hidden">
               <div class="card-header">
-                <h3><i class="fa-solid fa-tv"></i> Result Simulated TFT 1.28"</h3>
-                <span id="gif-result-size-badge" class="badge badge-success">320 KB</span>
+                <h3><i class="fa-solid fa-check-circle"></i> GIF Siap!</h3>
+                <span id="gif-result-size-badge" class="badge badge-success">0 KB</span>
               </div>
-
               <div class="card-body">
-                <div class="tft-simulator-frame">
-                  <div class="tft-outer-bezel">
-                    <div class="tft-inner-ring">
-                      <div class="tft-screen-glass">
-                        <img id="gif-resized-img" alt="Hasil Resize GIF" src="">
-                        <div class="tft-screen-glare"></div>
-                      </div>
+                <div class="dual-eye-preview">
+                  <div class="eye-preview-unit">
+                    <div class="tft-bezel-round">
+                      <img id="gif-resized-img" alt="Resized" src="">
+                      <div class="tft-glare"></div>
                     </div>
+                    <span class="eye-label" id="gif-eye-label-preview">Mata Kiri</span>
                   </div>
-                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD (ESP32-C3)</div>
                 </div>
-
                 <div class="result-details">
-                  <div class="detail-row">
-                    <span>Ukuran File Akhir:</span>
-                    <strong id="gif-final-size" class="mono-highlight">0 KB</strong>
-                  </div>
-                  <div class="detail-row">
-                    <span>Resolusi Hasil:</span>
-                    <strong id="gif-final-resolution">240 x 240 px (FIX HD)</strong>
-                  </div>
-                  <div class="detail-row">
-                    <span>Status Target:</span>
-                    <span id="gif-final-diff" class="badge badge-info">Aman</span>
-                  </div>
+                  <div class="detail-row"><span>Ukuran:</span><strong id="gif-final-size" class="mono-highlight">0 KB</strong></div>
+                  <div class="detail-row"><span>Resolusi:</span><strong id="gif-final-resolution">240×240</strong></div>
+                  <div class="detail-row"><span>Status:</span><span id="gif-final-diff" class="badge badge-success">Siap</span></div>
                 </div>
-
                 <div class="export-actions">
-                  <a id="btn-download-resized-gif" class="btn btn-primary btn-block btn-lg" download="resized_animation_240x240.gif">
-                    <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
+                  <a id="btn-download-resized-gif" class="btn btn-primary btn-block btn-lg" download="L_custom.gif">
+                    <i class="fa-solid fa-download"></i> Download GIF — Siap Upload ke Modul
                   </a>
-                  <button type="button" id="btn-download-gif-header" class="btn btn-accent btn-block btn-lg">
-                    <i class="fa-solid fa-file-code"></i> Unduh `animation.h` (ESP32-C3)
-                  </button>
-                  <button type="button" id="btn-toggle-gif-carray" class="btn btn-secondary btn-block">
-                    <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
-                  </button>
                 </div>
-
-                <div id="gif-carray-container" class="carray-container hidden">
-                  <div class="carray-header">
-                    <span>C-Array Buffer (`biled_animation_data[]`):</span>
-                    <button type="button" id="btn-copy-gif-carray" class="btn btn-sm btn-outline">
-                      <i class="fa-solid fa-copy"></i> Salin Code
-                    </button>
+                <div class="upload-reminder">
+                  <i class="fa-solid fa-wifi"></i>
+                  <div>
+                    <strong>Upload ke modul:</strong> WiFi <code>DMZ-Eye-Setup</code> → <code>http://192.168.4.1</code> → Upload GIF → Pilih di editor mata.
                   </div>
-                  <textarea id="gif-carray-text" readonly rows="6"></textarea>
                 </div>
               </div>
             </div>
-
           </section>
+        </div>
+      </div>
 
+      <!-- =============== TAB 3: PANDUAN =============== -->
+      <div id="tab-guide" class="tab-content">
+        <div class="guide-container">
+          <div class="card">
+            <div class="card-header"><h3><i class="fa-solid fa-book-open"></i> Panduan Upload Animasi ke Modul DMZ Dual Eye</h3></div>
+            <div class="card-body guide-content">
+              
+              <div class="guide-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Buat Animasi GIF</h4>
+                  <p>Gunakan tab <strong>"Video → Animasi Mata"</strong> atau <strong>"Resize GIF"</strong> di atas untuk membuat file GIF 240×240 px. Pastikan ukurannya tidak melebihi sisa ruang flash di modul.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Hubungkan ke WiFi Modul</h4>
+                  <p>Nyalakan modul DMZ Dual Eye. Di smartphone atau laptop Anda, sambungkan ke WiFi:</p>
+                  <div class="wifi-credentials">
+                    <div class="credential"><span>SSID:</span> <code>DMZ-Eye-Setup</code></div>
+                    <div class="credential"><span>Password:</span> <code>dmzeye123</code></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Buka Halaman Konfigurasi Modul</h4>
+                  <p>Buka browser dan kunjungi <a href="http://192.168.4.1" class="guide-link"><code>http://192.168.4.1</code></a>. Anda akan melihat halaman konfigurasi modul berisi editor mata kiri & kanan, halaman upload, dan pengaturan WiFi.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Upload File GIF</h4>
+                  <p>Di halaman web modul, gunakan fitur upload untuk mengunggah file GIF yang sudah dibuat. Perhatikan <strong>"Maks upload baru"</strong> untuk mengetahui sisa ruang flash. Upload hanya diterima jika file berupa GIF89a, resolusi tepat 240×240, dan ukurannya cukup.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                  <h4>Pilih Animasi di Editor Mata</h4>
+                  <p>Setelah upload berhasil, buka editor mata kiri atau kanan. Pilih GIF baru dari daftar, atur rotasi / zoom / geser sesuai selera, lalu <strong>simpan</strong>. Animasi baru akan langsung tampil di TFT!</p>
+                </div>
+              </div>
+
+              <div class="guide-specs">
+                <h4><i class="fa-solid fa-microchip"></i> Spesifikasi Teknis Modul</h4>
+                <table class="specs-table">
+                  <tr><td>Mikrokontroler</td><td>ESP32-C3 Super Mini</td></tr>
+                  <tr><td>Display</td><td>2× GC9A01A 1.28" TFT Bulat (240×240 px)</td></tr>
+                  <tr><td>Servo</td><td>2× Servo mekanisme naik/turun (kelopak mata)</td></tr>
+                  <tr><td>Flash GIF</td><td>~1.835.008 byte (LittleFS)</td></tr>
+                  <tr><td>Format GIF</td><td>GIF89a, 240×240 px, 8-15 FPS, 32-128 warna</td></tr>
+                  <tr><td>Konektivitas</td><td>WiFi AP + Web Server built-in</td></tr>
+                  <tr><td>Update</td><td>OTA (Over-The-Air) tersedia</td></tr>
+                </table>
+              </div>
+
+              <div class="guide-naming">
+                <h4><i class="fa-solid fa-tags"></i> Aturan Penamaan File GIF</h4>
+                <table class="specs-table">
+                  <tr><td><code>L_namafile.gif</code></td><td>Khusus mata <strong>kiri</strong></td></tr>
+                  <tr><td><code>R_namafile.gif</code></td><td>Khusus mata <strong>kanan</strong></td></tr>
+                  <tr><td><code>U_namafile.gif</code></td><td><strong>Universal</strong> — bisa dipakai kiri maupun kanan</td></tr>
+                </table>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
 
     </main>
 
-    <!-- Footer -->
     <footer class="app-footer">
-      <p>Vid2GIF TFT 1.28" &bull; BiLED_Eye_ESP32C3 Ready &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
+      <p><strong>DMZ Eye Animator</strong> — Custom Animation Tool untuk Modul DMZ Dual Eye ESP32-C3<br>
+      <span style="color: var(--text-dim);">Dibuat oleh <a href="https://github.com/dimas-sandi" target="_blank" style="color: var(--primary);">Dimas Sandi</a> &bull; 2024</span></p>
     </footer>
   </div>
 
   <canvas id="render-canvas" width="240" height="240" style="display: none;"></canvas>
 
-  <!-- Application Scripts -->
   <script src="js/gif-encoder.js"></script>
   <script src="js/gif-decoder.js"></script>
   <script src="js/cropper.js"></script>
