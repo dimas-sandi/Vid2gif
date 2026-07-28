@@ -110,7 +110,11 @@ class NeuQuant {
     let bestd = 1e30, bestbiasd = 1e30, bestpos = -1, bestbiaspos = -1;
     for (let i = 0; i < this.netsize; i++) {
       const p = this.network[i];
-      const dist = Math.abs(p[0] - r) + Math.abs(p[1] - g) + Math.abs(p[2] - b);
+      const dr = p[0] - r;
+      const dg = p[1] - g;
+      const db = p[2] - b;
+      // Perceptual color weighting (30% Red, 59% Green, 11% Blue)
+      const dist = 0.299 * Math.abs(dr) + 0.587 * Math.abs(dg) + 0.114 * Math.abs(db);
       if (dist < bestd) { bestd = dist; bestpos = i; }
       const biasdist = dist - (this.bias[i] >> (this.alphabiasshift - this.radbiasshift));
       if (biasdist < bestbiasd) { bestbiasd = biasdist; bestbiaspos = i; }
@@ -164,14 +168,15 @@ class NeuQuant {
     }
   }
 
-  // Exact nearest-color lookup — O(256) but precise (no cache error)
+  // Exact nearest-color lookup with perceptual color weighting (Ezgif-quality)
   lookupRGB(r, g, b) {
     let bestd = 1e9, best = 0;
     for (let i = 0; i < this.netsize; i++) {
       const dr = this.network[i][0] - r;
       const dg = this.network[i][1] - g;
       const db = this.network[i][2] - b;
-      const d = dr * dr + dg * dg + db * db;
+      // Perceptual distance: Red 30%, Green 59%, Blue 11%
+      const d = 0.299 * dr * dr + 0.587 * dg * dg + 0.114 * db * db;
       if (d < bestd) { bestd = d; best = i; }
     }
     return best;
@@ -437,8 +442,8 @@ class AsyncGIFEncoder {
             enc.setColorCount(colors);
             enc.setDeltaCompression(false, 0);
 
-            // Build global palette from sampled keyframes
-            const step = Math.max(1, Math.floor(frames.length / 6));
+            // Build global palette from ALL frames across the video for maximum sharpness
+            const step = Math.max(1, Math.floor(frames.length / 20));
             let len = 0;
             for (let i = 0; i < frames.length; i += step) len += frames[i].length;
             const sampled = new Uint8Array(len);

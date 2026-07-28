@@ -295,7 +295,7 @@ class VideoCropper {
 
     // Smooth anti-aliased downscaling without motion blur
     tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = 'medium';
+    tctx.imageSmoothingQuality = 'high';
     tctx.clearRect(0, 0, tw, th);
     tctx.fillStyle = '#000000';
     tctx.fillRect(0, 0, tw, th);
