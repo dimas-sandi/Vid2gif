@@ -1,6 +1,7 @@
 /**
  * Vid2GIF - Main Application Controller
- * Powered by Ezgif Global Palette Engine & Web Worker (240x240 HD, 256 Colors, Ultra Fast).
+ * Powered by Ezgif Global Palette Engine & Fast 50ms Frame Sampler.
+ * Optimized for BiLED Controller Module (BiLED_Eye_ESP32C3).
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resFinalResolution = document.getElementById('res-final-resolution');
   const resFinalDiff = document.getElementById('res-final-diff');
   const btnDownloadGif = document.getElementById('btn-download-gif');
+  const btnDownloadHeader = document.getElementById('btn-download-header');
   const btnToggleCArray = document.getElementById('btn-toggle-carray');
   const carrayContainer = document.getElementById('carray-container');
   const carrayText = document.getElementById('carray-text');
@@ -109,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
       trimStartInput.max = dur;
       trimEndInput.max = dur;
       trimStartInput.value = '0.0';
-      // DEFAULT TO FULL VIDEO DURATION (Not limited to 3s)
       trimEndInput.value = dur.toFixed(1);
 
       videoCropper.resetTransform();
@@ -203,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calcStatusTag.textContent = '256 Warna Ezgif HD';
   }
 
-  // --- EZGIF GLOBAL PALETTE FAST HD GENERATOR ---
+  // --- FAST 50MS FRAME EXTRACTION & WEB WORKER HD GENERATOR ---
   btnGenerateGif.addEventListener('click', async () => {
     if (!sourceVideo || sourceVideo.readyState < 2) return;
 
@@ -260,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBarFill.style.width = `${extractPct}%`;
       }
 
-      progressStatusText.textContent = `[Ezgif Engine] Kompresi Global Palette & Delta (256 Warna HD)...`;
+      progressStatusText.textContent = `[Background Worker] Kompresi GIF 256 Warna HD...`;
 
       try {
         finalGifBuffer = await AsyncGIFEncoder.encodeInWorker(
@@ -289,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isWithinTarget = true;
       } else {
         progressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 200));
 
         currentDeltaThreshold += 12;
         currentFps = Math.max(3, Math.round(currentFps * 0.75));
@@ -311,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     resFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     resFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Global Palette HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ BiLED_Eye_ESP32C3 Ready (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 (${finalSizeKb} KB)`;
 
     progressContainer.classList.add('hidden');
@@ -321,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resultCard.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Safety seeking helper with 300ms fallback timeout to prevent video seek hangs
+  // Fast 50ms Seeking Helper to guarantee frame extraction completes in under 1 second!
   function seekVideoTo(video, time) {
     return new Promise((resolve) => {
       if (Math.abs(video.currentTime - time) < 0.02) {
@@ -335,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
           video.removeEventListener('seeked', onSeeked);
           resolve();
         }
-      }, 300);
+      }, 50); // Fast 50ms fallback timeout!
 
       const onSeeked = () => {
         if (!resolved) {
@@ -349,6 +350,11 @@ document.addEventListener('DOMContentLoaded', () => {
       video.currentTime = time;
     });
   }
+
+  btnDownloadHeader.addEventListener('click', () => {
+    if (!currentVideoGifBytes) return;
+    downloadHeaderFile(currentVideoGifBytes, 'animation.h');
+  });
 
   btnToggleCArray.addEventListener('click', () => {
     if (!currentVideoGifBytes) return;
@@ -398,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const gifFinalResolution = document.getElementById('gif-final-resolution');
   const gifFinalDiff = document.getElementById('gif-final-diff');
   const btnDownloadResizedGif = document.getElementById('btn-download-resized-gif');
+  const btnDownloadGifHeader = document.getElementById('btn-download-gif-header');
   const btnToggleGifCArray = document.getElementById('btn-toggle-gif-carray');
   const gifCArrayContainer = document.getElementById('gif-carray-container');
   const gifCArrayText = document.getElementById('gif-carray-text');
@@ -611,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isWithinTarget = true;
       } else {
         gifProgressStatusText.textContent = `Ukuran (${generatedKb} KB) > ${targetKb} KB. Menerapkan Ezgif Delta Optimizer & Tuning FPS...`;
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 200));
 
         currentDeltaThreshold += 12;
         targetFps = Math.max(3, Math.round(targetFps * 0.75));
@@ -633,14 +640,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = targetKb - finalSizeKb;
     gifFinalDiff.className = diff >= 0 ? 'badge badge-success' : 'badge status-warning';
     gifFinalDiff.textContent = diff >= 0 
-      ? `✨ Ezgif-Style Global Palette HD (-${diff} KB dari target ${targetKb} KB)` 
+      ? `✨ BiLED_Eye_ESP32C3 Ready (-${diff} KB dari target ${targetKb} KB)` 
       : `Ukuran Terkecil 240x240 HD (${finalSizeKb} KB)`;
 
-    gifProgressContainer.classList.add('hidden');
+    progressContainer.classList.add('hidden');
     gifResultCard.classList.remove('hidden');
     btnResizeGif.disabled = false;
 
     gifResultCard.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  btnDownloadGifHeader.addEventListener('click', () => {
+    if (!gifResizedBytes) return;
+    downloadHeaderFile(gifResizedBytes, 'animation.h');
   });
 
   btnToggleGifCArray.addEventListener('click', () => {
@@ -651,11 +663,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnCopyGifCArray.addEventListener('click', () => copyToClipboard(gifCArrayText, btnCopyGifCArray));
 
+  function downloadHeaderFile(bytes, filename = 'animation.h') {
+    let header = `// ====================================================================\n`;
+    header += `// Generated by Vid2GIF for BiLED Controller Module (BiLED_Eye_ESP32C3)\n`;
+    header += `// Target Display: 1.28" TFT LCD GC9A01 / ST7789 (240x240 px)\n`;
+    header += `// ====================================================================\n`;
+    header += `#ifndef ANIMATION_H\n`;
+    header += `#define ANIMATION_H\n\n`;
+    header += `#include <Arduino.h>\n`;
+    header += `#include <pgmspace.h>\n\n`;
+    header += `#define ANIMATION_WIDTH  240\n`;
+    header += `#define ANIMATION_HEIGHT 240\n`;
+    header += `#define ANIMATION_SIZE   ${bytes.length}\n\n`;
+    header += `const uint8_t biled_animation_data[${bytes.length}] PROGMEM = {\n  `;
+
+    const lines = [];
+    let currentLine = '';
+
+    for (let i = 0; i < bytes.length; i++) {
+      const hex = '0x' + bytes[i].toString(16).padStart(2, '0').toUpperCase();
+      currentLine += hex + ', ';
+      if ((i + 1) % 12 === 0) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    header += lines.join('\n  ');
+    header += `\n};\n\n#endif // ANIMATION_H\n`;
+
+    const blob = new Blob([header], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   function generateCArrayCode(bytes, targetTextarea, resolution) {
-    let code = `// Vid2GIF TFT 1.28" Export\n`;
+    let code = `// Vid2GIF BiLED Controller Module (ESP32-C3) Export\n`;
     code += `// Resolution: ${resolution}x${resolution}, Total Bytes: ${bytes.length}\n`;
     code += `#include <pgmspace.h>\n\n`;
-    code += `const uint8_t tft_gif_data[${bytes.length}] PROGMEM = {\n  `;
+    code += `const uint8_t biled_animation_data[${bytes.length}] PROGMEM = {\n  `;
 
     const maxSample = Math.min(bytes.length, 3000);
     const lines = [];

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vid2GIF - Ezgif-Style HD Converter TFT 1.28" (240x240)</title>
-  <meta name="description" content="Konverter video ke GIF statis Ezgif-Style khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) dengan 256-color HD quantization.">
+  <title>Vid2GIF - Ezgif-Style HD Converter TFT 1.28" (240x240 BiLED ESP32-C3)</title>
+  <meta name="description" content="Konverter video ke GIF statis khusus display TFT 1.28 inch 240x240 (GC9A01 / ST7789) BiLED_Eye_ESP32C3 dengan 256-color HD quantization dan export animation.h.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,7 @@
         </div>
         <div>
           <h1>Vid2GIF <span class="tft-tag">240x240 HD</span></h1>
-          <p class="subtitle">Konverter Video ke GIF Statis TFT 1.28" (Ezgif-Style Photorealistic 256-Color)</p>
+          <p class="subtitle">Konverter Video ke GIF TFT 1.28" (Khusus BiLED Controller Module ESP32-C3)</p>
         </div>
       </div>
       <div class="header-actions">
@@ -210,7 +210,7 @@
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Ezgif-Style Photorealistic 256-Color</strong>
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Optimized for ESP32-C3 BiLED Controller Module</strong>
                 </div>
 
                 <button type="button" id="btn-generate-gif" class="btn btn-accent btn-block btn-lg" disabled>
@@ -247,7 +247,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD</div>
+                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD (ESP32-C3)</div>
                 </div>
 
                 <div class="result-details">
@@ -266,9 +266,12 @@
                 </div>
 
                 <div class="export-actions">
-                  <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="tft_animation_240x240.gif">
+                  <a id="btn-download-gif" class="btn btn-primary btn-block btn-lg" download="animation_240x240.gif">
                     <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
                   </a>
+                  <button type="button" id="btn-download-header" class="btn btn-accent btn-block btn-lg">
+                    <i class="fa-solid fa-file-code"></i> Unduh `animation.h` (ESP32-C3)
+                  </button>
                   <button type="button" id="btn-toggle-carray" class="btn btn-secondary btn-block">
                     <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
                   </button>
@@ -276,7 +279,7 @@
 
                 <div id="carray-container" class="carray-container hidden">
                   <div class="carray-header">
-                    <span>C-Array Buffer (`tft_gif_data[]`):</span>
+                    <span>C-Array Buffer (`biled_animation_data[]`):</span>
                     <button type="button" id="btn-copy-carray" class="btn btn-sm btn-outline">
                       <i class="fa-solid fa-copy"></i> Salin Code
                     </button>
@@ -434,7 +437,7 @@
                 </div>
 
                 <div class="smooth-motion-badge">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Ezgif-Style Photorealistic 256-Color</strong>
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Optimized for ESP32-C3 BiLED Controller Module</strong>
                 </div>
 
                 <button type="button" id="btn-resize-gif" class="btn btn-accent btn-block btn-lg" disabled>
@@ -471,7 +474,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD</div>
+                  <div class="tft-hardware-label">GC9A01 240x240 1.28" TFT LCD (ESP32-C3)</div>
                 </div>
 
                 <div class="result-details">
@@ -490,9 +493,12 @@
                 </div>
 
                 <div class="export-actions">
-                  <a id="btn-download-resized-gif" class="btn btn-primary btn-block btn-lg" download="resized_tft_240x240.gif">
+                  <a id="btn-download-resized-gif" class="btn btn-primary btn-block btn-lg" download="resized_animation_240x240.gif">
                     <i class="fa-solid fa-download"></i> Unduh File GIF (.gif)
                   </a>
+                  <button type="button" id="btn-download-gif-header" class="btn btn-accent btn-block btn-lg">
+                    <i class="fa-solid fa-file-code"></i> Unduh `animation.h` (ESP32-C3)
+                  </button>
                   <button type="button" id="btn-toggle-gif-carray" class="btn btn-secondary btn-block">
                     <i class="fa-solid fa-code"></i> Salin C-Array (ESP32/Arduino)
                   </button>
@@ -500,7 +506,7 @@
 
                 <div id="gif-carray-container" class="carray-container hidden">
                   <div class="carray-header">
-                    <span>C-Array Buffer (`tft_gif_data[]`):</span>
+                    <span>C-Array Buffer (`biled_animation_data[]`):</span>
                     <button type="button" id="btn-copy-gif-carray" class="btn btn-sm btn-outline">
                       <i class="fa-solid fa-copy"></i> Salin Code
                     </button>
@@ -519,7 +525,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Vid2GIF TFT 1.28" &bull; 100% Statis (Export FIX 240x240 HD Ezgif-Style) &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
+      <p>Vid2GIF TFT 1.28" &bull; BiLED_Eye_ESP32C3 Ready &bull; Repositori: <a href="https://github.com/dimas-sandi/Vid2gif" target="_blank" style="color: var(--primary);">dimas-sandi/Vid2gif</a></p>
     </footer>
   </div>
 
